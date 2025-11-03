@@ -1,0 +1,40 @@
+/* Hide bottom navigation links on desktop */
+@media (min-width: 769px) {
+    /* Hide direct page links at bottom */
+    body > a[href="index.php"],
+    body > a[href="organizations.php"],
+    body > a[href="products.php"],
+    body > a[href="organization-product.php"] {
+        display: none !important;
+    }
+    
+    /* Hide purple nav links */
+    body > a.Home,
+    body > a.Organizations,
+    body > a.Products {
+        display: none !important;
+    }
+
+    /* Hide footer navigation links on desktop but keep footer content */
+    .footer-links a[href="index.php"],
+    .footer-links a[href="organizations.php"],
+    .footer-links a[href="products.php"] {
+        display: none !important;
+    }
+}
+
+/* Ensure mobile navigation stays visible on mobile */
+@media (max-width: 768px) {
+    .mobile-bottom-nav {
+        display: flex !important;
+    }
+    
+    /* Keep footer links visible on mobile */
+    .footer-links {
+        display: block !important;
+    }
+    
+    .footer-links a {
+        display: inline-block !important;
+    }
+}

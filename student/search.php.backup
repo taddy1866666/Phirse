@@ -1,0 +1,705 @@
+<?php
+include __DIR__ . '/db/config.php';
+
+$pageTitle = 'Search Results';
+include 'includes/header.php';
+
+// Get search query
+$search = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+// Get logged-in student's affiliations
+$student_id = $_SESSION['student_id'] ?? null;
+$affiliated_seller_ids = [];
+
+if ($student_id) {
+    $affiliations = fetchAll(
+        "SELECT seller_id FROM student_seller_affiliations WHERE student_id = ?",
+        [$student_id],
+        'i'
+    );
+    $affiliated_seller_ids = array_column($affiliations, 'seller_id');
+}
+
+// Search Products
+$products = [];
+if (!empty($search)) {
+$product_sql = "SELECT 
+                        p.id,
+                        p.seller_id,
+                        p.name,
+                        p.category,
+                        p.price,
+                        p.stock,
+                        COALESCE(p.image_path, '') as images,
+                        COALESCE(s.organization_name, s.organization, 'Student Organization') as organization_name,
+                        p.created_at
+                    FROM products p
+                    LEFT JOIN sellers s ON p.seller_id = s.id
+                    WHERE (p.status = 'approved' OR p.status IS NULL)
+                    AND (p.name LIKE ? OR p.description LIKE ? OR COALESCE(s.organization_name, s.organization) LIKE ?)
+                    ORDER BY p.created_at DESC
+                    LIMIT 12";
+    
+    $search_param = "%{$search}%";
+    $products = fetchAll($product_sql, [$search_param, $search_param, $search_param], 'sss');
+}
+
+// Search Organizations
+$organizations = [];
+if (!empty($search)) {
+    $org_sql = "SELECT 
+                    id,
+                    seller_name,
+                    organization_name,
+                    organization,
+                    logo_path,
+                    description,
+                    created_at
+                FROM sellers
+                WHERE (COALESCE(organization_name, organization) LIKE ? 
+                    OR seller_name LIKE ? 
+                    OR email LIKE ?)
+                ORDER BY COALESCE(organization_name, organization) ASC
+                LIMIT 12";
+    
+    $organizations = fetchAll($org_sql, [$search_param, $search_param, $search_param], 'sss');
+}
+
+function getFirstProductImage(int $sellerId, string $orgName, string $rawCsv): string {
+    $parts = array_filter(array_map('trim', explode(',', $rawCsv)));
+    $filename = basename(reset($parts) ?: '');
+    
+    if (empty($filename)) {
+        return "images/default-product.svg";
+    }
+    
+    $orgFolder = preg_replace('/[^A-Za-z0-9]/', '', $orgName);
+    
+    $paths = [
+        __DIR__ . "/../uploads/products/{$filename}",
+        __DIR__ . "/../seller/uploads/{$orgFolder}/{$filename}",
+        __DIR__ . "/../seller/uploads/{$sellerId}/{$filename}",
+        __DIR__ . "/../seller/uploads/{$filename}",
+        __DIR__ . "/../uploads/{$filename}",
+        __DIR__ . "/uploads/{$filename}",
+        __DIR__ . "/images/{$filename}",
+        reset($parts)
+    ];
+    
+    foreach ($paths as $path) {
+        if (file_exists($path)) {
+            if (strpos($path, __DIR__) === 0) {
+                $relativePath = str_replace(__DIR__, '.', $path);
+                return str_replace('\\', '/', $relativePath);
+            }
+            return $path;
+        }
+    }
+    
+    return "images/default-product.svg";
+}
+
+$total_results = count($products) + count($organizations);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search: <?= htmlspecialchars($search) ?> - PHIRSE</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/nav-bar-transparent.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        
+        body {
+            background: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 120px 2rem 2rem;
+        }
+        
+        .search-results-container {
+            width: 100%;
+        }
+        
+        .search-header {
+            margin-bottom: 2rem;
+        }
+        
+        .search-title {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .search-query {
+            color: #667eea;
+        }
+        
+        .search-meta {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .section-title {
+            font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+            font-weight: 700;
+            color: #333;
+            margin: 2rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .product-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            position: relative;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        .product-card.locked {
+            opacity: 0.7;
+        }
+        
+        .product-card.locked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.05);
+            pointer-events: none;
+        }
+        
+        .product-card-link {
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            height: 100%;
+            min-width: 0;
+        }
+        
+        .product-image-container {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            max-width: 100%;
+        }
+        
+        .locked-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 2;
+        }
+        
+        .locked-overlay i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .locked-overlay p {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .product-info {
+            padding: 1rem 0.8rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+        }
+        
+        .product-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.3rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+        }
+        
+        .product-category {
+            font-size: 0.7rem;
+            color: #999999;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .product-organization {
+            font-size: 0.75rem;
+            color: #999999;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .product-price {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .product-stock {
+            font-size: 0.8rem;
+            color: #28a745;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+        
+        .product-stock.out-of-stock {
+            color: #dc3545;
+        }
+        
+        .product-stock.member-only {
+            color: #ffc107;
+        }
+        
+        /* New Arrival Badge */
+        .new-arrival-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.4rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+        
+        /* Organizations Grid */
+        .organizations-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .org-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+        
+        .org-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        .org-card-link {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            width: 100%;
+            min-width: 0;
+        }
+        
+        .org-logo-container {
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .org-logo {
+            max-width: 70px;
+            max-height: 70px;
+            object-fit: contain;
+        }
+        
+        .org-logo-placeholder {
+            width: 70px;
+            height: 70px;
+            background: #e9ecef;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 2rem;
+        }
+        
+        .org-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        
+        .org-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0.5rem;
+            word-break: break-word;
+        }
+        
+        .org-description {
+            color: #666;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .no-results i {
+            font-size: 4rem;
+            color: #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        .no-results h3 {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        
+        .no-results p {
+            color: #999;
+        }
+        
+        @media (max-width: 1199px) and (min-width: 769px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1.25rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            main {
+                padding: 100px 1.5rem 2rem;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            .organizations-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .org-logo-container {
+                height: 140px;
+            }
+            
+            .org-logo,
+            .org-logo-placeholder {
+                max-width: 80px;
+                max-height: 80px;
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            main {
+                padding: 90px 1rem 1.5rem;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            
+            .product-info {
+                padding: 0.75rem 0.6rem;
+            }
+            
+            .product-name {
+                font-size: 0.85rem;
+            }
+            
+            .product-price {
+                font-size: 0.9rem;
+            }
+            
+            .organizations-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .org-logo-container {
+                height: 120px;
+            }
+            
+            .org-info {
+                padding: 1rem;
+            }
+            
+            .org-title {
+                font-size: 1rem;
+            }
+            
+            .org-description {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <?php include 'nav-bar-transparent.php'; ?>
+    
+    <main>
+        <div class="search-results-container">
+            <div class="search-header">
+                <h1 class="search-title">
+                    Search Results for <span class="search-query">"<?= htmlspecialchars($search) ?>"</span>
+                </h1>
+                <p class="search-meta"><?= $total_results ?> result<?= $total_results != 1 ? 's' : '' ?> found</p>
+            </div>
+        
+        <?php if ($total_results > 0): ?>
+            
+            <!-- Products Section -->
+            <?php if (!empty($products)): ?>
+                <h2 class="section-title">Products (<?= count($products) ?>)</h2>
+                <div class="products-grid">
+                    <?php foreach ($products as $product): 
+                        $imagePath = getFirstProductImage(
+                            (int)$product['seller_id'],
+                            $product['organization_name'],
+                            $product['images']
+                        );
+                        // Check if this is an organization shirt
+                        $is_org_shirt = (stripos($product['category'], 'shirt') !== false || 
+                                         stripos($product['name'], 'shirt') !== false ||
+                                         stripos($product['category'], 'uniform') !== false);
+                        
+                        // Check if user is affiliated with this product's seller
+                        $is_affiliated = in_array($product['seller_id'], $affiliated_seller_ids);
+                        
+                        // Determine if product should be locked
+                        $is_locked = $is_org_shirt && (!$student_id || !$is_affiliated);
+                        
+                        // Check if product is newly added (within last 90 days for testing)
+                        $is_new = (strtotime($product['created_at']) > strtotime('-90 days'));
+                    ?>
+                        <div class="product-card <?= $is_locked ? 'locked' : '' ?>">
+                            <?php if ($is_new && !$is_locked): ?>
+                                <span class="new-arrival-badge">New!</span>
+                            <?php endif; ?>
+                            <?php if ($is_locked): ?>
+                                <div style="position: relative;">
+                                    <div class="product-image-container">
+                                        <img src="<?= htmlspecialchars($imagePath) ?>" 
+                                             alt="<?= htmlspecialchars($product['name']) ?>" 
+                                             class="product-image"
+                                             loading="lazy">
+                                        <div class="locked-overlay">
+                                            <i class="fas fa-lock"></i>
+                                            <p>Members Only</p>
+                                        </div>
+                                    </div>
+                                    <div class="product-info">
+                                        <?php if (!empty($product['category'])): ?>
+                                            <div class="product-category"><?= htmlspecialchars($product['category']) ?></div>
+                                        <?php endif; ?>
+                                        <h3 class="product-name"><?= htmlspecialchars($product['name']) ?></h3>
+                                        <div class="product-organization">
+                                            <i class="fas fa-users"></i>
+                                            <?= htmlspecialchars($product['organization_name']) ?>
+                                        </div>
+                                        <div class="product-price">₱<?= number_format($product['price'], 2) ?></div>
+                                        <div class="product-stock member-only">
+                                            <i class="fas fa-lock"></i> Member Access Required
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <a href="product-details.php?id=<?= $product['id'] ?>" class="product-card-link">
+                                    <div class="product-image-container">
+                                        <img src="<?= htmlspecialchars($imagePath) ?>" 
+                                             alt="<?= htmlspecialchars($product['name']) ?>" 
+                                             class="product-image"
+                                             loading="lazy">
+                                    </div>
+                                    <div class="product-info">
+                                        <?php if (!empty($product['category'])): ?>
+                                            <div class="product-category"><?= htmlspecialchars($product['category']) ?></div>
+                                        <?php endif; ?>
+                                        <h3 class="product-name"><?= htmlspecialchars($product['name']) ?></h3>
+                                        <div class="product-organization">
+                                            <i class="fas fa-users"></i>
+                                            <?= htmlspecialchars($product['organization_name']) ?>
+                                        </div>
+                                        <div class="product-price">₱<?= number_format($product['price'], 2) ?></div>
+                                        <div class="product-stock <?= $product['stock'] <= 0 ? 'out-of-stock' : '' ?>">
+                                            <?php if ($product['stock'] > 0): ?>
+                                                <i class="fas fa-box"></i> <?= $product['stock'] ?> in stock
+                                            <?php else: ?>
+                                                <i class="fas fa-times-circle"></i> Out of stock
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            
+            <!-- Organizations Section -->
+            <?php if (!empty($organizations)): ?>
+                <h2 class="section-title">Organizations (<?= count($organizations) ?>)</h2>
+                <div class="organizations-grid">
+                    <?php foreach ($organizations as $org): ?>
+                        <div class="org-card">
+                            <a href="organization-product.php?id=<?= $org['id'] ?>" class="org-card-link">
+                                <div class="org-logo-container">
+                                    <?php
+                                    $logo_found = false;
+                                    $logo_src = '';
+                                    
+                                    if (!empty($org['logo_path'])) {
+                                        $possible_paths = [
+                                            $org['logo_path'],
+                                            '../' . $org['logo_path'],
+                                            'uploads/' . basename($org['logo_path']),
+                                        ];
+                                        
+                                        foreach ($possible_paths as $path) {
+                                            if (file_exists(__DIR__ . '/' . ltrim($path, '/'))) {
+                                                $logo_src = $path;
+                                                $logo_found = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if ($logo_found): ?>
+                                        <img src="<?= htmlspecialchars($logo_src) ?>" 
+                                             alt="<?= htmlspecialchars($org['organization_name'] ?: $org['organization']) ?> Logo" 
+                                             class="org-logo">
+                                    <?php else: ?>
+                                        <div class="org-logo-placeholder">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="org-info">
+                                    <h3 class="org-title">
+                                        <?= htmlspecialchars($org['organization_name'] ?: $org['organization'] ?: 'Unnamed Organization') ?>
+                                    </h3>
+                                    <p class="org-description">
+                                        <?= htmlspecialchars($org['description'] ?: 'Student organization at PLV') ?>
+                                    </p>
+                                </div>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            
+        <?php else: ?>
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h3>No Results Found</h3>
+                <p>We couldn't find any products or organizations matching "<?= htmlspecialchars($search) ?>"</p>
+                <p>Try searching with different keywords</p>
+            </div>
+        <?php endif; ?>
+        </div>
+    </main>
+    
+    <script src="js/script.js"></script>
+</body>
+</html>

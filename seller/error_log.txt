@@ -1,0 +1,16 @@
+[12-Oct-2025 07:46:51 Europe/Berlin] Order update error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'updated_at' in 'field list'
+[12-Oct-2025 07:47:06 Europe/Berlin] Order update error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'updated_at' in 'field list'
+[12-Oct-2025 07:47:11 Europe/Berlin] Order update error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'updated_at' in 'field list'
+[12-Oct-2025 07:47:16 Europe/Berlin] Order update error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'updated_at' in 'field list'
+[12-Oct-2025 07:53:35 Europe/Berlin] Order update error: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'updated_at' in 'field list'
+[15-Oct-2025 10:51:04 Europe/Berlin] PHP Warning:  foreach() argument must be of type array|object, string given in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 32
+[15-Oct-2025 10:51:04 Europe/Berlin] PHP Warning:  Undefined variable $organization_name in C:\vg\htdocs\Phirse\seller\sidebar.php on line 7
+[15-Oct-2025 10:51:04 Europe/Berlin] PHP Warning:  Undefined variable $seller_name in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 349
+[15-Oct-2025 10:51:32 Europe/Berlin] PHP Warning:  foreach() argument must be of type array|object, string given in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 32
+[15-Oct-2025 10:51:32 Europe/Berlin] PHP Warning:  Undefined variable $organization_name in C:\vg\htdocs\Phirse\seller\sidebar.php on line 7
+[15-Oct-2025 10:51:32 Europe/Berlin] PHP Warning:  Undefined variable $seller_name in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 349
+[15-Oct-2025 10:51:58 Europe/Berlin] PHP Warning:  foreach() argument must be of type array|object, string given in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 32
+[15-Oct-2025 10:51:58 Europe/Berlin] PHP Warning:  Undefined variable $organization_name in C:\vg\htdocs\Phirse\seller\sidebar.php on line 7
+[15-Oct-2025 10:51:58 Europe/Berlin] PHP Warning:  Undefined variable $seller_name in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 349
+[15-Oct-2025 10:52:06 Europe/Berlin] PHP Warning:  Undefined variable $organization_name in C:\vg\htdocs\Phirse\seller\sidebar.php on line 7
+[15-Oct-2025 10:52:06 Europe/Berlin] PHP Warning:  Undefined variable $seller_name in C:\vg\htdocs\Phirse\seller\seller-add-product.php on line 349

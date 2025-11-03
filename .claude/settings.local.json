@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(findstr:*)",
+      "Read(//c/xampp/mysql/bin/**)",
+      "Bash(C:/xampp/php/php.exe:*)",
+      "Bash(C:/xampp/mysql/bin/mysql.exe:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

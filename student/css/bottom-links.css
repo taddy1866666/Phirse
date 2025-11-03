@@ -1,0 +1,40 @@
+/* Style for the purple navigation links at the bottom */
+body > a[href="index.php"],
+body > a[href="organizations.php"],
+body > a[href="products.php"],
+body > a.Home,
+body > a.Organizations,
+body > a.Products {
+    position: fixed;
+    bottom: 0;
+    z-index: 1000;
+}
+
+/* Hide these links on desktop */
+@media (min-width: 769px) {
+    body > a[href="index.php"],
+    body > a[href="organizations.php"],
+    body > a[href="products.php"],
+    body > a.Home,
+    body > a.Organizations,
+    body > a.Products {
+        display: none !important;
+    }
+}
+
+/* Ensure they're visible on mobile */
+@media (max-width: 768px) {
+    body > a[href="index.php"],
+    body > a[href="organizations.php"],
+    body > a[href="products.php"],
+    body > a.Home,
+    body > a.Organizations,
+    body > a.Products {
+        display: inline-block !important;
+    }
+
+    /* Prevent the fixed bottom links from covering page controls (buttons/forms) */
+    body {
+        padding-bottom: 90px; /* leave more space for the bottom navigation */
+    }
+}
