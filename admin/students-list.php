@@ -294,27 +294,6 @@ try {
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .export-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .export-btn:hover {
-            background: #5568d3;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
         .students-table-container {
             background: white;
             border-radius: 12px;
@@ -644,10 +623,25 @@ try {
                     ?>
                 </select>
 
-                <button class="export-btn" onclick="exportToCSV()">
-                    <i class="fas fa-download"></i>
-                    Export CSV
-                </button>
+                <a href="export_students_pdf.php" style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    border: none;
+                    cursor: pointer;
+                    white-space: nowrap;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                    <i class="fas fa-file-pdf"></i>
+                    Export to PDF
+                </a>
             </div>
         </div>
 
@@ -820,48 +814,6 @@ try {
             if (event.target == modal) {
                 closeModal();
             }
-        }
-
-        function exportToCSV() {
-            const rows = document.querySelectorAll('.students-table tbody tr');
-            let csv = 'Student Number,Name,Organization,Course & Section,Contact,Email,Orders,Total Spent\n';
-            
-            rows.forEach(row => {
-                if (row.style.display !== 'none') {
-                    const cells = row.querySelectorAll('td');
-                    const studentName = cells[0].querySelector('.student-name').textContent;
-                    const studentNumber = cells[0].querySelector('.student-number').textContent;
-                    const org = cells[1].textContent;
-                    const course = cells[2].textContent;
-                    const contact = cells[3].textContent;
-                    const ordersText = cells[4].textContent.trim();
-                    const spentText = cells[5].textContent.trim();
-                    
-                    const viewButton = cells[6].querySelector('.btn-view');
-                    const onclickAttr = viewButton.getAttribute('onclick');
-                    const jsonMatch = onclickAttr.match(/viewStudent\((.*)\)/);
-                    
-                    if (jsonMatch) {
-                        try {
-                            const studentObj = JSON.parse(jsonMatch[1].replace(/'/g, '"'));
-                            const email = studentObj.email || 'N/A';
-                            const totalSpent = parseFloat(studentObj.total_spent || 0).toFixed(2);
-                            
-                            csv += `"${studentNumber}","${studentName}","${org}","${course}","${contact}","${email}","${ordersText}","${totalSpent}"\n`;
-                        } catch (e) {
-                            console.error('Error parsing student data:', e);
-                        }
-                    }
-                }
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'students_' + new Date().toISOString().split('T')[0] + '.csv';
-            a.click();
-            window.URL.revokeObjectURL(url);
         }
     </script>
 </body>

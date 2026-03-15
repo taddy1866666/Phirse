@@ -40,6 +40,59 @@ try {
     $seller_name = $_SESSION['seller_name'] ?? '';
 }
 
+// Handle bulk delete
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_multiple'])) {
+    try {
+        $ids = json_decode($_POST['delete_multiple'], true);
+        
+        if (!is_array($ids) || empty($ids)) {
+            throw new Exception("Invalid selection");
+        }
+        
+        // Validate all IDs are numeric and belong to the seller
+        foreach ($ids as $id) {
+            if (!is_numeric($id)) {
+                throw new Exception("Invalid product ID");
+            }
+        }
+        
+        // Create placeholders for the IN clause
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        
+        // Get product info before deleting for notifications
+        $getProductsStmt = $pdo->prepare("SELECT id, name, category FROM products WHERE id IN ($placeholders) AND seller_id = ?");
+        $productsToDelete = array_merge($ids, [$seller_id]);
+        $getProductsStmt->execute($productsToDelete);
+        $productsInfo = $getProductsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Delete all selected products that belong to this seller
+        $stmt = $pdo->prepare("DELETE FROM products WHERE id IN ($placeholders) AND seller_id = ?");
+        $ids_with_seller = array_merge($ids, [$seller_id]);
+        $stmt->execute($ids_with_seller);
+        
+        // Create admin notifications for each deleted product
+        foreach ($productsInfo as $product) {
+            $notif_message = 'Organization: ' . htmlspecialchars($organization_name) . "\nSeller: " . htmlspecialchars($seller_name) . "\nCategory: " . $product['category'] . "\nProduct: " . $product['name'] . "\nAction: Product has been deleted by the seller.";
+            $notifStmt = $pdo->prepare("
+                INSERT INTO admin_notifications (type, title, message, seller_id)
+                VALUES (?, ?, ?, ?)
+            ");
+            $notifStmt->execute([
+                'product_deleted',
+                'Product Deleted: ' . $product['name'],
+                $notif_message,
+                $seller_id
+            ]);
+        }
+        
+        $message = "Successfully deleted " . count($ids) . " product(s)!";
+        header('Location: seller-products.php?message=' . urlencode($message));
+        exit();
+    } catch(Exception $e) {
+        $error = "Error deleting products: " . $e->getMessage();
+    }
+}
+
 // Get seller's products
 try {
     $stmt = $pdo->prepare("SELECT * FROM products WHERE seller_id = ? ORDER BY created_at DESC");
@@ -187,29 +240,6 @@ try {
             color: #721c24;
         }
         
-        .reason-text {
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-            max-width: 200px;
-            word-wrap: break-word;
-        }
-        
-        .reason-text.rejected {
-            color: #dc3545;
-            font-weight: 500;
-        }
-        
-        .reason-text.approved {
-            color: #28a745;
-            font-weight: 500;
-        }
-        
-        .reason-text.pending {
-            color: #ffc107;
-            font-weight: 500;
-        }
-        
         .product-image {
             width: 60px;
             height: 60px;
@@ -236,6 +266,57 @@ try {
             padding: 40px;
             color: #999;
             font-style: italic;
+        }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .select-all-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .select-all-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .delete-selected-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .delete-selected-btn:hover {
+            background-color: #c82333;
+        }
+
+        .product-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
         
         .message {
@@ -357,9 +438,19 @@ try {
                     No products found. <a href="seller-add-product.php">Add your first product</a>
                 </div>
             <?php else: ?>
+                <div class="bulk-actions">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                        <span>Select All</span>
+                    </label>
+                    <button class="delete-selected-btn" onclick="deleteSelected()" id="deleteSelectedBtn" style="display: none;">
+                        <i class="fas fa-trash"></i> Delete Selected
+                    </button>
+                </div>
                 <table class="products-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"></th>
                             <th>Product Name</th>
                             <th>Category</th>
                             <th>Price</th>
@@ -367,13 +458,15 @@ try {
                             <th>Image</th>
                             <th>Status</th>
                             <th>Created Date</th>
-                            <th>Reason</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($products as $product): ?>
-                            <tr>
+                            <tr class="product-row" data-product-id="<?php echo $product['id']; ?>">
+                                <td style="text-align: center;">
+                                    <input type="checkbox" class="product-checkbox" value="<?php echo $product['id']; ?>" onchange="updateSelectAllState()">
+                                </td>
                                 <td><?php echo htmlspecialchars($product['name']); ?></td>
                                 <td><?php echo htmlspecialchars($product['category']); ?></td>
                                 <td>₱<?php echo number_format($product['price'], 2); ?></td>
@@ -400,25 +493,6 @@ try {
                                     </span>
                                 </td>
                                 <td><?php echo date('M j, Y', strtotime($product['created_at'])); ?></td>
-                                <td>
-                                    <?php if ($product['status'] === 'rejected' && !empty($product['rejection_reason'])): ?>
-                                        <div class="reason-text rejected">
-                                            <?php echo htmlspecialchars($product['rejection_reason']); ?>
-                                        </div>
-                                    <?php elseif ($product['status'] === 'approved'): ?>
-                                        <div class="reason-text approved">
-                                            Product approved by admin
-                                        </div>
-                                    <?php elseif ($product['status'] === 'pending'): ?>
-                                        <div class="reason-text pending">
-                                            Under review by admin
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="reason-text">
-                                            —
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
                                 <td>
                                     <?php if ($product['status'] === 'approved'): ?>
                                         <button onclick="openUpdateStockModal(<?php echo $product['id']; ?>, <?php echo $product['stock']; ?>)" class="update-stock-btn">
@@ -468,6 +542,21 @@ try {
 
         .update-stock-btn:hover {
             background-color: #0056b3;
+        }
+
+        .delete-product-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+
+        .delete-product-btn:hover {
+            background-color: #c82333;
         }
 
         .modal {
@@ -618,6 +707,86 @@ try {
             });
 
             return false;
+        }
+
+        function confirmDeleteProduct(productId, productName) {
+            if (confirm(`Are you sure you want to delete the product "${productName}"? This action cannot be undone.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.style.display = 'none';
+                
+                const input1 = document.createElement('input');
+                input1.type = 'hidden';
+                input1.name = 'delete_product';
+                input1.value = '1';
+                
+                const input2 = document.createElement('input');
+                input2.type = 'hidden';
+                input2.name = 'product_id';
+                input2.value = productId;
+                
+                form.appendChild(input1);
+                form.appendChild(input2);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Bulk delete functions
+        function toggleSelectAll(checkbox) {
+            const allCheckboxes = document.querySelectorAll('.product-checkbox');
+            allCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateDeleteButtonState();
+        }
+        
+        function updateSelectAllState() {
+            const allCheckboxes = document.querySelectorAll('.product-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const checkedCount = document.querySelectorAll('.product-checkbox:checked').length;
+            
+            selectAllCheckbox.checked = checkedCount === allCheckboxes.length && allCheckboxes.length > 0;
+            updateDeleteButtonState();
+        }
+        
+        function updateDeleteButtonState() {
+            const checkedCheckboxes = document.querySelectorAll('.product-checkbox:checked');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            
+            if (checkedCheckboxes.length > 0) {
+                deleteBtn.style.display = 'flex';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+        }
+        
+        function deleteSelected() {
+            const checkedCheckboxes = document.querySelectorAll('.product-checkbox:checked');
+            if (checkedCheckboxes.length === 0) {
+                alert('Please select at least one product to delete.');
+                return;
+            }
+            
+            const selectedIds = Array.from(checkedCheckboxes).map(cb => cb.value);
+            const count = selectedIds.length;
+            
+            if (confirm(`Are you sure you want to delete ${count} product(s)? This action cannot be undone.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'seller-products.php';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_multiple';
+                input.value = JSON.stringify(selectedIds);
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
         }
     </script>
 </body>

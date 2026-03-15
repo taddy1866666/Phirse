@@ -213,6 +213,48 @@ if ($_POST && isset($_POST['add_product'])) {
             }
         }
         
+        // Handle PDF upload (required)
+        $pdf_path = null;
+        
+        // Determine PDF field name based on category
+        $pdf_field = 'product_pdf';
+        if ($category === 'Organization Shirt') {
+            $pdf_field = 'shirt_pdf';
+        } elseif ($category === 'Merchandise') {
+            $pdf_field = 'merch_pdf';
+        }
+        
+        if (!isset($_FILES[$pdf_field]) || $_FILES[$pdf_field]['error'] !== 0) {
+            throw new Exception("PDF file is required. Please upload a PDF file.");
+        }
+        
+        $pdf_file = $_FILES[$pdf_field];
+        
+        // Validate file type
+        if ($pdf_file['type'] !== 'application/pdf') {
+            throw new Exception("Only PDF files are allowed. Uploaded file type: " . $pdf_file['type']);
+        }
+        
+        // Validate file size (max 10MB)
+        if ($pdf_file['size'] > 10 * 1024 * 1024) {
+            throw new Exception("PDF file size must be less than 10MB.");
+        }
+        
+        // Create uploads directory if it doesn't exist
+        $pdf_upload_dir = '../uploads/product_pdfs/';
+        if (!file_exists($pdf_upload_dir)) {
+            mkdir($pdf_upload_dir, 0777, true);
+        }
+        
+        $pdf_filename = uniqid() . '_product_' . pathinfo($pdf_file['name'], PATHINFO_FILENAME) . '.pdf';
+        $pdf_upload_path = $pdf_upload_dir . $pdf_filename;
+        
+        if (move_uploaded_file($pdf_file['tmp_name'], $pdf_upload_path)) {
+            $pdf_path = $pdf_upload_path;
+        } else {
+            throw new Exception("Failed to upload PDF file.");
+        }
+        
         // Set ticket specific fields if it's an event ticket
         $ticket_type = null;
         
@@ -220,9 +262,9 @@ if ($_POST && isset($_POST['add_product'])) {
             $ticket_type = $_POST['ticket_type'] ?? null;
         }
 
-        $stmt = $pdo->prepare("INSERT INTO products (seller_id, category, name, description, price, stock, image_path, ticket_type, max_order, status, created_at) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
-        $stmt->execute([$seller_id, $category, $event_name, $description, $price, $stock, $image_path, $ticket_type, $max_order]);
+        $stmt = $pdo->prepare("INSERT INTO products (seller_id, category, name, description, price, stock, image_path, ticket_type, max_order, pdf_path, status, created_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
+        $stmt->execute([$seller_id, $category, $event_name, $description, $price, $stock, $image_path, $ticket_type, $max_order, $pdf_path]);
 
         $product_id = $pdo->lastInsertId();
 
@@ -643,6 +685,10 @@ if ($_POST && isset($_POST['add_product'])) {
                         <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">
                             You can select multiple images. First image will be the main display image.
                         </small>
+                        <div id="shirt-image-preview" style="display: none; margin-top: 20px;">
+                            <h4 style="margin-bottom: 10px; color: #333;">Selected Images Preview:</h4>
+                            <div id="shirt-preview-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;"></div>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -660,6 +706,20 @@ if ($_POST && isset($_POST['add_product'])) {
                         <label for="shirt_max_order" class="form-label">Maximum Order Per Student:</label>
                         <input type="number" name="shirt_max_order" id="shirt_max_order" class="form-control" min="1" placeholder="Leave empty for no limit">
                         <small class="form-text text-muted">Maximum number of items a student can order</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="shirt_pdf" class="form-label">Product PDF File: <span class="required">*</span></label>
+                        <div class="file-input-wrapper">
+                            <input type="file" name="shirt_pdf" id="shirt_pdf" class="file-input" accept=".pdf" required>
+                            <label for="shirt_pdf" class="file-input-label">
+                                <i class="fas fa-file-pdf"></i> Choose PDF file
+                            </label>
+                            <span id="shirt-pdf-file-name" style="margin-left: 10px; color: #666;">No file chosen</span>
+                        </div>
+                        <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">
+                            Upload a PDF file for product specifications, manual, or documentation. Max 10MB.
+                        </small>
                     </div>
 
                     <button type="submit" name="add_product" class="submit-btn">
@@ -727,6 +787,10 @@ if ($_POST && isset($_POST['add_product'])) {
                         <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">
                             You can select multiple images. First image will be the main display image.
                         </small>
+                        <div id="merch-image-preview" style="display: none; margin-top: 20px;">
+                            <h4 style="margin-bottom: 10px; color: #333;">Selected Images Preview:</h4>
+                            <div id="merch-preview-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;"></div>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -744,6 +808,20 @@ if ($_POST && isset($_POST['add_product'])) {
                         <label for="merch_max_order" class="form-label">Maximum Order Per Student:</label>
                         <input type="number" name="merch_max_order" id="merch_max_order" class="form-control" min="1" placeholder="Leave empty for no limit">
                         <small class="form-text text-muted">Maximum number of items a student can order</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merch_pdf" class="form-label">Product PDF File: <span class="required">*</span></label>
+                        <div class="file-input-wrapper">
+                            <input type="file" name="merch_pdf" id="merch_pdf" class="file-input" accept=".pdf" required>
+                            <label for="merch_pdf" class="file-input-label">
+                                <i class="fas fa-file-pdf"></i> Choose PDF file
+                            </label>
+                            <span id="merch-pdf-file-name" style="margin-left: 10px; color: #666;">No file chosen</span>
+                        </div>
+                        <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">
+                            Upload a PDF file for product specifications, manual, or documentation. Max 10MB.
+                        </small>
                     </div>
 
                     <button type="submit" name="add_product" class="submit-btn">
@@ -803,6 +881,24 @@ if ($_POST && isset($_POST['add_product'])) {
                         <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">
                             You can select multiple images. First image will be the main display image.
                         </small>
+                        <div id="image-preview" style="display: none; margin-top: 20px;">
+                            <h4 style="margin-bottom: 10px; color: #333;">Selected Images Preview:</h4>
+                            <div id="preview-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="product_pdf" class="form-label">Product PDF File: <span class="required">*</span></label>
+                        <div class="file-input-wrapper">
+                            <input type="file" name="product_pdf" id="product_pdf" class="file-input" accept=".pdf" required>
+                            <label for="product_pdf" class="file-input-label">
+                                <i class="fas fa-file-pdf"></i> Choose PDF file
+                            </label>
+                            <span id="pdf-file-name" style="margin-left: 10px; color: #666;">No file chosen</span>
+                        </div>
+                        <small style="color: #666; font-size: 0.85rem; margin-top: 0.5rem; display: block;">
+                            Upload a PDF file for product specifications, manual, or documentation. Max 10MB.
+                        </small>
                     </div>
 
                     <button type="submit" name="add_product" class="submit-btn">
@@ -814,33 +910,245 @@ if ($_POST && isset($_POST['add_product'])) {
     </div>
 
     <script>
-        document.getElementById('images').addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files.length > 0) {
-                const fileNames = Array.from(files).map(file => file.name).join(', ');
-                document.getElementById('file-name').textContent = `${files.length} file(s) chosen: ${fileNames}`;
-            } else {
-                document.getElementById('file-name').textContent = 'No files chosen';
-            }
-        });
-        
-        function toggleFormSections() {
-            const category = document.getElementById('category').value;
-            const orgShirtSection = document.getElementById('organization-shirt-section');
-            const merchandiseSection = document.getElementById('merchandise-section');
-            const defaultSection = document.getElementById('default-section');
+        let selectedFiles = [];
+        let shirtSelectedFiles = [];
+        let merchSelectedFiles = [];
 
-            document.querySelectorAll('.form-section').forEach(section => {
-                section.classList.remove('active');
-                const inputs = section.querySelectorAll('input[required], select[required]');
-                inputs.forEach(input => {
-                    if (input.hasAttribute('data-originally-required')) {
-                        input.removeAttribute('required');
-                    } else if (input.hasAttribute('required')) {
-                        input.setAttribute('data-originally-required', 'true');
-                        input.removeAttribute('required');
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Default category image preview
+            const imagesInput = document.getElementById('images');
+            if (imagesInput) {
+                imagesInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    const previewContainer = document.getElementById('preview-container');
+                    const previewSection = document.getElementById('image-preview');
+                    
+                    if (files.length > 0) {
+                        const fileNames = files.map(file => file.name).join(', ');
+                        document.getElementById('file-name').textContent = `${files.length} file(s) chosen: ${fileNames}`;
+                        
+                        selectedFiles = files;
+                        previewContainer.innerHTML = '';
+                        
+                        files.forEach((file, index) => {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const previewItem = document.createElement('div');
+                                previewItem.style.cssText = 'position: relative; background: #f0f0f0; border-radius: 8px; overflow: hidden; cursor: pointer;';
+                                previewItem.innerHTML = `
+                                    <img src="${e.target.result}" style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                                    <button type="button" class="remove-image-btn" data-index="${index}" style="position: absolute; top: 4px; right: 4px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                                        ×
+                                    </button>
+                                    <small style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${index + 1}</small>
+                                `;
+                                previewContainer.appendChild(previewItem);
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                        
+                        previewSection.style.display = 'block';
+                    } else {
+                        document.getElementById('file-name').textContent = 'No files chosen';
+                        previewSection.style.display = 'none';
+                        selectedFiles = [];
                     }
                 });
+            }
+
+            // Handle image removal
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-image-btn')) {
+                    e.preventDefault();
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    selectedFiles.splice(index, 1);
+                    
+                    // Create new DataTransfer to update file input
+                    const dataTransfer = new DataTransfer();
+                    selectedFiles.forEach(file => {
+                        dataTransfer.items.add(file);
+                    });
+                    document.getElementById('images').files = dataTransfer.files;
+                    
+                    // Trigger change event to update preview
+                    document.getElementById('images').dispatchEvent(new Event('change'));
+                }
+            });
+
+            // Product PDF handler
+            const productPdfInput = document.getElementById('product_pdf');
+            if (productPdfInput) {
+                productPdfInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        document.getElementById('pdf-file-name').textContent = `Selected: ${file.name}`;
+                    } else {
+                        document.getElementById('pdf-file-name').textContent = 'No file chosen';
+                    }
+                });
+            }
+
+            // Handle shirt image preview
+            const shirtImageInput = document.getElementById('shirt_image');
+            if (shirtImageInput) {
+                shirtImageInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    const previewContainer = document.getElementById('shirt-preview-container');
+                    const previewSection = document.getElementById('shirt-image-preview');
+                    
+                    if (files.length > 0) {
+                        const fileNames = files.map(file => file.name).join(', ');
+                        document.getElementById('shirt-file-name').textContent = `${files.length} file(s) chosen: ${fileNames}`;
+                        
+                        shirtSelectedFiles = files;
+                        previewContainer.innerHTML = '';
+                        
+                        files.forEach((file, index) => {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const previewItem = document.createElement('div');
+                                previewItem.style.cssText = 'position: relative; background: #f0f0f0; border-radius: 8px; overflow: hidden; cursor: pointer;';
+                                previewItem.innerHTML = `
+                                    <img src="${e.target.result}" style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                                    <button type="button" class="remove-shirt-image-btn" data-index="${index}" style="position: absolute; top: 4px; right: 4px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                                        ×
+                                    </button>
+                                    <small style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${index + 1}</small>
+                                `;
+                                previewContainer.appendChild(previewItem);
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                        
+                        previewSection.style.display = 'block';
+                    } else {
+                        document.getElementById('shirt-file-name').textContent = 'No files chosen';
+                        previewSection.style.display = 'none';
+                        shirtSelectedFiles = [];
+                    }
+                });
+            }
+
+            // Handle merchandise image preview
+            const merchImageInput = document.getElementById('merch_image');
+            if (merchImageInput) {
+                merchImageInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    const previewContainer = document.getElementById('merch-preview-container');
+                    const previewSection = document.getElementById('merch-image-preview');
+                    
+                    if (files.length > 0) {
+                        const fileNames = files.map(file => file.name).join(', ');
+                        document.getElementById('merch-file-name').textContent = `${files.length} file(s) chosen: ${fileNames}`;
+                        
+                        merchSelectedFiles = files;
+                        previewContainer.innerHTML = '';
+                        
+                        files.forEach((file, index) => {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const previewItem = document.createElement('div');
+                                previewItem.style.cssText = 'position: relative; background: #f0f0f0; border-radius: 8px; overflow: hidden; cursor: pointer;';
+                                previewItem.innerHTML = `
+                                    <img src="${e.target.result}" style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                                    <button type="button" class="remove-merch-image-btn" data-index="${index}" style="position: absolute; top: 4px; right: 4px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                                        ×
+                                    </button>
+                                    <small style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${index + 1}</small>
+                                `;
+                                previewContainer.appendChild(previewItem);
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                        
+                        previewSection.style.display = 'block';
+                    } else {
+                        document.getElementById('merch-file-name').textContent = 'No files chosen';
+                        previewSection.style.display = 'none';
+                        merchSelectedFiles = [];
+                    }
+                });
+            }
+
+            // Handle shirt image removal
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-shirt-image-btn')) {
+                    e.preventDefault();
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    shirtSelectedFiles.splice(index, 1);
+                    
+                    const dataTransfer = new DataTransfer();
+                    shirtSelectedFiles.forEach(file => {
+                        dataTransfer.items.add(file);
+                    });
+                    document.getElementById('shirt_image').files = dataTransfer.files;
+                    
+                    document.getElementById('shirt_image').dispatchEvent(new Event('change'));
+                }
+            });
+
+            // Handle merchandise image removal
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-merch-image-btn')) {
+                    e.preventDefault();
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    merchSelectedFiles.splice(index, 1);
+                    
+                    const dataTransfer = new DataTransfer();
+                    merchSelectedFiles.forEach(file => {
+                        dataTransfer.items.add(file);
+                    });
+                    document.getElementById('merch_image').files = dataTransfer.files;
+                    
+                    document.getElementById('merch_image').dispatchEvent(new Event('change'));
+                }
+            });
+
+            // Shirt PDF file handler
+            const shirtPdfInput = document.getElementById('shirt_pdf');
+            if (shirtPdfInput) {
+                shirtPdfInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        document.getElementById('shirt-pdf-file-name').textContent = `Selected: ${file.name}`;
+                    } else {
+                        document.getElementById('shirt-pdf-file-name').textContent = 'No file chosen';
+                    }
+                });
+            }
+
+            // Merchandise PDF file handler
+            const merchPdfInput = document.getElementById('merch_pdf');
+            if (merchPdfInput) {
+                merchPdfInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        document.getElementById('merch-pdf-file-name').textContent = `Selected: ${file.name}`;
+                    } else {
+                        document.getElementById('merch-pdf-file-name').textContent = 'No file chosen';
+                    }
+                });
+            }
+        
+            function toggleFormSections() {
+                const category = document.getElementById('category').value;
+                const orgShirtSection = document.getElementById('organization-shirt-section');
+                const merchandiseSection = document.getElementById('merchandise-section');
+                const defaultSection = document.getElementById('default-section');
+
+                document.querySelectorAll('.form-section').forEach(section => {
+                    section.classList.remove('active');
+                    const inputs = section.querySelectorAll('input[required], select[required]');
+                    inputs.forEach(input => {
+                        if (input.hasAttribute('data-originally-required')) {
+                            input.removeAttribute('required');
+                        } else if (input.hasAttribute('required')) {
+                            input.setAttribute('data-originally-required', 'true');
+                            input.removeAttribute('required');
+                        }
+                    });
             });
 
             let activeSection = null;
@@ -885,9 +1193,7 @@ if ($_POST && isset($_POST['add_product'])) {
             }
         }
         
-
-
-        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize event listeners for category changes and form submission
             const merchTypeInput = document.getElementById('merch_type');
             if (merchTypeInput) {
                 merchTypeInput.addEventListener('input', toggleMerchSizes);
@@ -898,40 +1204,6 @@ if ($_POST && isset($_POST['add_product'])) {
             if (categorySelect) {
                 categorySelect.addEventListener('change', toggleFormSections);
                 toggleFormSections();
-            }
-
-            const defaultFileInput = document.getElementById('images');
-            if (defaultFileInput) {
-                defaultFileInput.addEventListener('change', function(e) {
-                    const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
-                    document.getElementById('file-name').textContent = fileName;
-                });
-            }
-
-            const shirtFileInput = document.getElementById('shirt_image');
-            if (shirtFileInput) {
-                shirtFileInput.addEventListener('change', function(e) {
-                    const files = e.target.files;
-                    if (files.length > 0) {
-                        const fileNames = Array.from(files).map(file => file.name).join(', ');
-                        document.getElementById('shirt-file-name').textContent = `${files.length} file(s) chosen: ${fileNames}`;
-                    } else {
-                        document.getElementById('shirt-file-name').textContent = 'No files chosen';
-                    }
-                });
-            }
-
-            const merchFileInput = document.getElementById('merch_image');
-            if (merchFileInput) {
-                merchFileInput.addEventListener('change', function(e) {
-                    const files = e.target.files;
-                    if (files.length > 0) {
-                        const fileNames = Array.from(files).map(file => file.name).join(', ');
-                        document.getElementById('merch-file-name').textContent = `${files.length} file(s) chosen: ${fileNames}`;
-                    } else {
-                        document.getElementById('merch-file-name').textContent = 'No files chosen';
-                    }
-                });
             }
 
             const form = document.querySelector('form');
@@ -980,7 +1252,7 @@ if ($_POST && isset($_POST['add_product'])) {
                     }
                 });
             }
-        })
+        });
     </script>
 </body>
 </html>

@@ -10,23 +10,69 @@ require_once '../database/config.php';
 $pageTitle = 'Registered Sellers';
 include 'includes/header.php';
 
+$message = '';
+$error = '';
+
+// Get message from session and clear it
+if (isset($_SESSION['message'])) {
+    $message = $_SESSION['message'];
+    unset($_SESSION['message']);
+}
+
+// Get error from session and clear it
+if (isset($_SESSION['error'])) {
+    $error = $_SESSION['error'];
+    unset($_SESSION['error']);
+}
+
+// Handle password reset request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
+    $seller_id = $_POST['seller_id'] ?? '';
+    $new_password = $_POST['new_password'] ?? '';
+    $confirm_password = $_POST['confirm_new_password'] ?? '';
+    
+    if (empty($seller_id)) {
+        $_SESSION['error'] = "Invalid seller ID.";
+    } elseif (empty($new_password) || empty($confirm_password)) {
+        $_SESSION['error'] = "All password fields are required.";
+    } elseif ($new_password !== $confirm_password) {
+        $_SESSION['error'] = "New passwords do not match.";
+    } elseif (strlen($new_password) < 6) {
+        $_SESSION['error'] = "New password must be at least 6 characters long.";
+    } else {
+        try {
+            $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+            $stmt = $pdo->prepare("UPDATE sellers SET password = ? WHERE id = ?");
+            $stmt->execute([$hashed_password, $seller_id]);
+            $_SESSION['message'] = "Password reset successfully!";
+        } catch(PDOException $e) {
+            $_SESSION['error'] = "Error resetting password: " . $e->getMessage();
+        }
+    }
+    header('Location: registered-sellers.php');
+    exit();
+}
+
 // Handle add seller request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_seller'])) {
     $seller_name = trim($_POST['seller_name']);
     $organization = trim($_POST['organization']);
+    $adviser = trim($_POST['adviser']);
     $contact_number = trim($_POST['contact_number']);
     $password = $_POST['password'];
     
-    if (!empty($seller_name) && !empty($organization) && !empty($contact_number) && !empty($password)) {
+    if (!empty($seller_name) && !empty($organization) && !empty($adviser) && !empty($contact_number) && !empty($password)) {
         // Validate minimum length requirements
         if (strlen($seller_name) < 4) {
-            $error = "Seller name must be at least 4 characters long.";
-        } elseif (strlen($organization) < 4) {
-            $error = "Organization name must be at least 4 characters long.";
+            $_SESSION['error'] = "Seller name must be at least 4 characters long.";
+        } elseif (strlen($organization) < 3) {
+            $_SESSION['error'] = "Organization name must be at least 3 characters long.";
+        } elseif (strlen($adviser) < 3) {
+            $_SESSION['error'] = "Adviser name must be at least 3 characters long.";
         } elseif (strlen($password) < 6) {
-            $error = "Password must be at least 6 characters long.";
+            $_SESSION['error'] = "Password must be at least 6 characters long.";
         } elseif (strlen($contact_number) !== 12 || !preg_match('/^09[0-9]{10}$/', $contact_number)) {
-            $error = "Contact number must start with 09 and be exactly 12 digits.";
+            $_SESSION['error'] = "Contact number must start with 09 and be exactly 12 digits.";
         } else {
         try {
             // Handle logo upload
@@ -47,19 +93,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_seller'])) {
                 }
             }
             
-            $stmt = $pdo->prepare("INSERT INTO sellers (seller_name, organization, contact_number, password, logo_path) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO sellers (seller_name, organization, adviser, contact_number, password, logo_path) VALUES (?, ?, ?, ?, ?, ?)");
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt->execute([$seller_name, $organization, $contact_number, $hashed_password, $logo_path]);
+            $stmt->execute([$seller_name, $organization, $adviser, $contact_number, $hashed_password, $logo_path]);
             
-            header('Location: registered-sellers.php?message=Seller added successfully');
+            $_SESSION['message'] = "Seller added successfully!";
+            header('Location: registered-sellers.php');
             exit();
         } catch(PDOException $e) {
-            $error = "Error adding seller: " . $e->getMessage();
+            $_SESSION['error'] = "Error adding seller: " . $e->getMessage();
         }
         }
     } else {
-        $error = "Please fill in all required fields.";
+        $_SESSION['error'] = "Please fill in all required fields.";
     }
+    header('Location: registered-sellers.php');
+    exit();
 }
 
 // Handle delete request
@@ -68,10 +117,46 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     try {
         $stmt = $pdo->prepare("DELETE FROM sellers WHERE id = ?");
         $stmt->execute([$seller_id]);
-        header('Location: registered-sellers.php?message=Seller deleted successfully');
+        $_SESSION['message'] = "Seller deleted successfully!";
+        header('Location: registered-sellers.php');
         exit();
-    } catch(PDOException $e) {
-        $error = "Error deleting seller: " . $e->getMessage();
+        } catch(PDOException $e) {
+            $_SESSION['error'] = "Error deleting seller: " . $e->getMessage();
+        }
+        header('Location: registered-sellers.php');
+        exit();
+    }
+
+// Handle bulk delete request
+if (isset($_POST['delete_multiple'])) {
+    try {
+        $ids = json_decode($_POST['delete_multiple'], true);
+        
+        if (!is_array($ids) || empty($ids)) {
+            throw new Exception("Invalid selection");
+        }
+        
+        // Validate all IDs are numeric
+        foreach ($ids as $id) {
+            if (!is_numeric($id)) {
+                throw new Exception("Invalid seller ID");
+            }
+        }
+        
+        // Create placeholders for the IN clause
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        
+        // Delete all selected sellers
+        $stmt = $pdo->prepare("DELETE FROM sellers WHERE id IN ($placeholders)");
+        $stmt->execute($ids);
+        
+        $_SESSION['message'] = "Successfully deleted " . count($ids) . " seller(s)!";
+        header('Location: registered-sellers.php');
+        exit();
+    } catch(Exception $e) {
+        $_SESSION['error'] = "Error deleting sellers: " . $e->getMessage();
+        header('Location: registered-sellers.php');
+        exit();
     }
 }
 
@@ -283,6 +368,60 @@ try {
             margin-top: 24px;
         }
         
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .select-all-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #475569;
+            user-select: none;
+        }
+        
+        .select-all-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .delete-selected-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            margin-left: auto;
+        }
+        
+        .delete-selected-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        
+        .seller-checkbox {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
         .sellers-table {
             width: 100%;
             border-collapse: collapse;
@@ -334,6 +473,28 @@ try {
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
         
+        .reset-password-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            margin-right: 8px;
+        }
+        
+        .reset-password-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
         .seller-logo {
             width: 50px;
             height: 50px;
@@ -376,16 +537,67 @@ try {
         .message {
             background-color: #d4edda;
             color: #155724;
-            padding: 12px;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border-radius: 8px;
             margin-bottom: 20px;
             border: 1px solid #c3e6cb;
+            border-left: 4px solid #28a745;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+        
+        .message-close {
+            background: none;
+            border: none;
+            color: #155724;
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+        
+        .message-close:hover {
+            opacity: 0.7;
         }
         
         .error {
             background-color: #f8d7da;
             color: #721c24;
             border-color: #f5c6cb;
+            border-left-color: #dc3545;
+        }
+        
+        .error .message-close {
+            color: #721c24;
         }
         
         .windows-activation {
@@ -423,6 +635,15 @@ try {
             max-width: 500px;
             position: relative;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
         }
         
         .modal-close {
@@ -493,6 +714,59 @@ try {
             font-size: 14px;
         }
         
+        .image-preview-container {
+            margin-top: 12px;
+            display: none;
+            text-align: center;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border: 2px dashed #ccc;
+        }
+        
+        .image-preview-container.show {
+            display: block;
+        }
+        
+        .image-preview {
+            max-width: 150px;
+            max-height: 150px;
+            width: 150px;
+            height: 150px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            padding: 4px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            object-fit: contain;
+            background: white;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .image-preview-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .clear-preview-btn {
+            background: #e8e8e8;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #333;
+            transition: all 0.2s;
+        }
+        
+        .clear-preview-btn:hover {
+            background: #d0d0d0;
+        }
+        
         .register-btn {
             width: 100%;
             background-color: #333;
@@ -504,6 +778,49 @@ try {
             font-weight: 600;
             cursor: pointer;
             margin-top: 20px;
+        }
+        
+        .register-btn:hover {
+            background-color: #555;
+            transform: translateY(-2px);
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        
+        .submit-btn,
+        .cancel-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .submit-btn {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .submit-btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .cancel-btn {
+            background-color: #e5e7eb;
+            color: #333;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #d1d5db;
+            transform: translateY(-1px);
         }
         
         .register-btn:hover {
@@ -626,12 +943,18 @@ try {
             </div>
         </div>
             
-        <?php if (isset($_GET['message'])): ?>
-            <div class="message"><?php echo htmlspecialchars($_GET['message']); ?></div>
+        <?php if (!empty($message)): ?>
+            <div class="message" id="messageAlert">
+                <span><?php echo htmlspecialchars($message); ?></span>
+                <button type="button" class="message-close" onclick="closeMessage()">&times;</button>
+            </div>
         <?php endif; ?>
         
-        <?php if (isset($error)): ?>
-            <div class="message error"><?php echo htmlspecialchars($error); ?></div>
+        <?php if (!empty($error)): ?>
+            <div class="message error" id="errorAlert">
+                <span><?php echo htmlspecialchars($error); ?></span>
+                <button type="button" class="message-close" onclick="closeMessage(event)">&times;</button>
+            </div>
         <?php endif; ?>
 
         <div class="sellers-table-container">
@@ -640,20 +963,32 @@ try {
                     No sellers found<?php echo !empty($search) ? ' for your search criteria' : ''; ?>.
                 </div>
             <?php else: ?>
+                <div class="bulk-actions">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                        <span>Select All</span>
+                    </label>
+                    <button class="delete-selected-btn" onclick="deleteSelected()" id="deleteSelectedBtn" style="display: none;">
+                        <i class="fas fa-trash"></i> Delete Selected
+                    </button>
+                </div>
                 <table class="sellers-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"></th>
                             <th>ID</th>
                             <th>Seller Name</th>
                             <th>Organization</th>
                             <th>Logo</th>
                             <th>Contact Number</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($sellers as $seller): ?>
-                            <tr>
+                            <tr class="seller-row" data-seller-id="<?php echo $seller['id']; ?>">
+                                <td style="text-align: center;">
+                                    <input type="checkbox" class="seller-checkbox" value="<?php echo $seller['id']; ?>" onchange="updateSelectAllState()">
+                                </td>
                                 <td><?php echo htmlspecialchars($seller['id']); ?></td>
                                 <td><?php echo htmlspecialchars($seller['seller_name']); ?></td>
                                 <td><?php echo htmlspecialchars($seller['organization']); ?></td>
@@ -670,14 +1005,6 @@ try {
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($seller['contact_number']); ?></td>
-                                <td>
-                                    <button 
-                                        class="delete-btn" 
-                                        onclick="confirmDelete(<?php echo $seller['id']; ?>, '<?php echo htmlspecialchars($seller['seller_name']); ?>')"
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -688,6 +1015,43 @@ try {
         
     </div>
 
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideResetPasswordModal()">&times;</button>
+            <h2>Reset Seller Password</h2>
+            <form method="POST">
+                <input type="hidden" name="seller_id" id="resetSellerIdInput">
+                <input type="hidden" name="reset_password" value="1">
+                
+                <div class="form-group">
+                    <label>Organization:</label>
+                    <input type="text" id="resetOrganization" disabled style="background-color: #f0f0f0; cursor: not-allowed;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Seller Name:</label>
+                    <input type="text" id="resetSellerName" disabled style="background-color: #f0f0f0; cursor: not-allowed;">
+                </div>
+                
+                <div class="form-group">
+                    <label for="resetNewPassword">New Password:</label>
+                    <input type="password" name="new_password" id="resetNewPassword" required minlength="6" title="Password must be at least 6 characters long">
+                </div>
+                
+                <div class="form-group">
+                    <label for="resetConfirmPassword">Confirm Password:</label>
+                    <input type="password" name="confirm_new_password" id="resetConfirmPassword" required minlength="6" title="Password must be at least 6 characters long">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="hideResetPasswordModal()">Cancel</button>
+                    <button type="submit" class="submit-btn">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Add Seller Modal -->
     <div id="addSellerModal" class="modal">
         <div class="modal-content">
@@ -695,7 +1059,12 @@ try {
             <form method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="organization">Organization Name:</label>
-                    <input type="text" name="organization" id="organization" required minlength="4" title="Organization name must be at least 4 characters long">
+                    <input type="text" name="organization" id="organization" required minlength="3" title="Organization name must be at least 3 characters long">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adviser">Adviser:</label>
+                    <input type="text" name="adviser" id="adviser" required minlength="3" title="Adviser name must be at least 3 characters long">
                 </div>
                 
                 <div class="form-group">
@@ -715,7 +1084,12 @@ try {
                 
                 <div class="file-upload-group">
                     <label for="logo">Upload Organization Logo:</label>
-                    <input type="file" name="logo" id="logo" class="file-upload-input" accept="image/*">
+                    <input type="file" name="logo" id="logo" class="file-upload-input" accept="image/*" onchange="previewImage(event)">
+                    <div class="image-preview-container" id="previewContainer">
+                        <img id="previewImage" class="image-preview" alt="Logo preview">
+                        <div class="image-preview-info" id="previewInfo"></div>
+                        <button type="button" class="clear-preview-btn" onclick="clearPreview()">Clear Preview</button>
+                    </div>
                 </div>
                 
                 <button type="submit" name="add_seller" class="register-btn">Register</button>
@@ -724,22 +1098,161 @@ try {
     </div>
 
     <script>
+        // Image preview function
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const previewContainer = document.getElementById('previewContainer');
+            const previewImage = document.getElementById('previewImage');
+            const previewInfo = document.getElementById('previewInfo');
+            
+            if (file) {
+                // Check if file is an image
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImage.src = e.target.result;
+                        previewContainer.classList.add('show');
+                        
+                        // Display file info
+                        const sizeInKB = (file.size / 1024).toFixed(2);
+                        previewInfo.textContent = `${file.name} (${sizeInKB} KB)`;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    previewContainer.classList.remove('show');
+                    previewInfo.textContent = 'Please select an image file';
+                    alert('Please select an image file (JPG, PNG, GIF)');
+                }
+            } else {
+                previewContainer.classList.remove('show');
+            }
+        }
+        
+        // Clear preview function
+        function clearPreview() {
+            document.getElementById('logo').value = '';
+            document.getElementById('previewContainer').classList.remove('show');
+            document.getElementById('previewImage').src = '';
+            document.getElementById('previewInfo').textContent = '';
+        }
+        
+        // Message auto-dismiss
+        function closeMessage(event) {
+            if (event) event.target.closest('.message').remove();
+            else {
+                const messageAlert = document.getElementById('messageAlert');
+                if (messageAlert) messageAlert.remove();
+            }
+        }
+        
+        // Auto-close messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageAlert = document.getElementById('messageAlert');
+            const errorAlert = document.getElementById('errorAlert');
+            
+            if (messageAlert) {
+                setTimeout(() => {
+                    messageAlert.style.animation = 'slideUp 0.3s ease-out forwards';
+                    setTimeout(() => messageAlert.remove(), 300);
+                }, 5000);
+            }
+            
+            if (errorAlert) {
+                setTimeout(() => {
+                    errorAlert.style.animation = 'slideUp 0.3s ease-out forwards';
+                    setTimeout(() => errorAlert.remove(), 300);
+                }, 7000);
+            }
+        });
+        
+        function showResetPasswordModal(sellerId, sellerName, organization) {
+            document.getElementById('resetSellerIdInput').value = sellerId;
+            document.getElementById('resetOrganization').value = organization;
+            document.getElementById('resetSellerName').value = sellerName;
+            document.getElementById('resetNewPassword').value = '';
+            document.getElementById('resetConfirmPassword').value = '';
+            document.getElementById('resetPasswordModal').classList.add('show');
+        }
+        
+        function hideResetPasswordModal() {
+            document.getElementById('resetPasswordModal').classList.remove('show');
+        }
+        
         function confirmDelete(id, name) {
             if (confirm(`Are you sure you want to delete seller "${name}"? This action cannot be undone.`)) {
                 window.location.href = `registered-sellers.php?delete=${id}`;
             }
         }
         
+        function toggleSelectAll(checkbox) {
+            const allCheckboxes = document.querySelectorAll('.seller-checkbox');
+            allCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateDeleteButtonState();
+        }
+        
+        function updateSelectAllState() {
+            const allCheckboxes = document.querySelectorAll('.seller-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const checkedCount = document.querySelectorAll('.seller-checkbox:checked').length;
+            
+            selectAllCheckbox.checked = checkedCount === allCheckboxes.length && allCheckboxes.length > 0;
+            updateDeleteButtonState();
+        }
+        
+        function updateDeleteButtonState() {
+            const checkedCheckboxes = document.querySelectorAll('.seller-checkbox:checked');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            
+            if (checkedCheckboxes.length > 0) {
+                deleteBtn.style.display = 'flex';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+        }
+        
+        function deleteSelected() {
+            const checkedCheckboxes = document.querySelectorAll('.seller-checkbox:checked');
+            if (checkedCheckboxes.length === 0) {
+                alert('Please select at least one seller to delete.');
+                return;
+            }
+            
+            const selectedIds = Array.from(checkedCheckboxes).map(cb => cb.value);
+            const count = selectedIds.length;
+            
+            if (confirm(`Are you sure you want to delete ${count} seller(s)? This action cannot be undone.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'registered-sellers.php';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_multiple';
+                input.value = JSON.stringify(selectedIds);
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
         
         function hideModal() {
             document.getElementById('addSellerModal').classList.remove('show');
+            // Don't clear the form - let user keep their selections
         }
         
         // Close modal when clicking outside
         window.onclick = function(event) {
-            var modal = document.getElementById('addSellerModal');
-            if (event.target == modal) {
+            var addSellerModal = document.getElementById('addSellerModal');
+            var resetPasswordModal = document.getElementById('resetPasswordModal');
+            if (event.target == addSellerModal) {
                 hideModal();
+            }
+            if (event.target == resetPasswordModal) {
+                hideResetPasswordModal();
             }
         }
         
@@ -747,6 +1260,7 @@ try {
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 hideModal();
+                hideResetPasswordModal();
             }
         });
         
@@ -760,8 +1274,8 @@ try {
             // Organization name validation
             if (organization) {
                 organization.addEventListener('input', function(e) {
-                    if (this.value.length > 0 && this.value.length < 4) {
-                        this.setCustomValidity('Organization name must be at least 4 characters long');
+                    if (this.value.length > 0 && this.value.length < 3) {
+                        this.setCustomValidity('Organization name must be at least 3 characters long');
                     } else {
                         this.setCustomValidity('');
                     }
@@ -848,9 +1362,9 @@ try {
                     let errorMessage = '';
                     
                     // Check organization name
-                    if (organization && organization.value.length < 4) {
+                    if (organization && organization.value.length < 3) {
                         hasError = true;
-                        errorMessage = 'Organization name must be at least 4 characters long';
+                        errorMessage = 'Organization name must be at least 3 characters long';
                         organization.focus();
                     }
                     // Check seller name
@@ -885,7 +1399,28 @@ try {
         function showModal() {
             document.getElementById('addSellerModal').classList.add('show');
             setupFormValidation();
+            
+            // Show preview if file is already selected
+            const logoInput = document.getElementById('logo');
+            if (logoInput.files.length > 0) {
+                const event = { target: logoInput };
+                previewImage(event);
+            }
         }
+        
+        // Auto-show reset password modal if there's an error
+        <?php if (!empty($error)): ?>
+            document.addEventListener('DOMContentLoaded', function() {
+                const resetPasswordModal = document.getElementById('resetPasswordModal');
+                if (resetPasswordModal && document.querySelector('.message.error')) {
+                    // There's an error, show modal if it's related to password reset
+                    const sellerIdInput = document.getElementById('resetSellerIdInput');
+                    if (sellerIdInput && sellerIdInput.value) {
+                        showResetPasswordModal(sellerIdInput.value, document.getElementById('resetSellerName').value || 'Seller', document.getElementById('resetOrganization').value || '');
+                    }
+                }
+            });
+        <?php endif; ?>
     </script>
 </body>
 </html>

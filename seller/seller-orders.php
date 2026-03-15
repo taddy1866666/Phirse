@@ -28,23 +28,57 @@ try {
     $organization_name = $seller_info['organization'] ?? '';
     $seller_name = $seller_info['seller_name'] ?? '';
 
-    // Fetch seller orders - MODIFIED TO INCLUDE claiming_datetime
-    $stmt = $pdo->prepare("
-        SELECT 
-            o.id, o.quantity, o.total_price, o.order_date, o.status,
-            o.payment_method, o.payment_proof_path, o.reference_number,
-            o.claiming_datetime, o.product_size,
-            p.name AS product_name,
-            s.student_number, s.student_name, s.organization AS student_organization,
-            s.course_section, s.contact_number
-        FROM orders o
-        JOIN products p ON o.product_id = p.id
-        LEFT JOIN students s ON o.student_id = s.id
-        WHERE p.seller_id = ?
-        ORDER BY o.order_date DESC
-    ");
+    // Check if cancellation_reason column exists
+    $hasReasonColumn = false;
+    try {
+        $testStmt = $pdo->query("SHOW COLUMNS FROM orders LIKE 'cancellation_reason'");
+        $hasReasonColumn = $testStmt && $testStmt->rowCount() > 0;
+    } catch(Exception $e) {
+        $hasReasonColumn = false;
+    }
+
+    // Fetch seller orders with conditional column selection
+    if ($hasReasonColumn) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                o.id, o.quantity, o.total_price, o.order_date, o.status,
+                o.payment_method, o.payment_proof_path, o.reference_number,
+                o.claiming_datetime, o.product_size, o.cancellation_reason,
+                p.name AS product_name,
+                s.student_number, s.student_name, s.organization AS student_organization,
+                s.course_section, s.contact_number
+            FROM orders o
+            JOIN products p ON o.product_id = p.id
+            LEFT JOIN students s ON o.student_id = s.id
+            WHERE p.seller_id = ?
+            ORDER BY o.order_date DESC
+        ");
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT 
+                o.id, o.quantity, o.total_price, o.order_date, o.status,
+                o.payment_method, o.payment_proof_path, o.reference_number,
+                o.claiming_datetime, o.product_size,
+                p.name AS product_name,
+                s.student_number, s.student_name, s.organization AS student_organization,
+                s.course_section, s.contact_number
+            FROM orders o
+            JOIN products p ON o.product_id = p.id
+            LEFT JOIN students s ON o.student_id = s.id
+            WHERE p.seller_id = ?
+            ORDER BY o.order_date DESC
+        ");
+    }
     $stmt->execute([$seller_id]);
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add cancellation_reason to each order if column doesn't exist
+    if (!$hasReasonColumn) {
+        foreach ($orders as &$order) {
+            $order['cancellation_reason'] = null;
+        }
+        unset($order);
+    }
 
 } catch(PDOException $e) {
     $error_message = "Error: " . $e->getMessage();
@@ -221,39 +255,93 @@ try {
             color: #842029;
         }
 
+        .btn-cancel {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background-color: #c82333;
+        }
+
+        .btn-cancel:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-cancelled {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c6cb;
+        }
+
+        .btn-cancelled:hover {
+            background-color: #f5c6cb;
+        }
+
+        .btn-cancelled:disabled {
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
         .action-btn {
             padding: 8px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 13px;
             cursor: pointer;
             margin-right: 8px;
+            margin-bottom: 4px;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-view {
-            background-color: #0d6efd;
+            background-color: #667eea;
             color: white;
         }
 
         .btn-view:hover {
-            background-color: #0b5ed7;
+            background-color: #5568d3;
+            transform: translateY(-1px);
         }
 
         .btn-received {
-            background-color: #198754;
+            background-color: #10b981;
             color: white;
         }
 
         .btn-received:hover {
-            background-color: #157347;
+            background-color: #059669;
+            transform: translateY(-1px);
         }
 
         .btn-received:disabled {
-            background-color: #6c757d;
+            background-color: #d1d5db;
             cursor: not-allowed;
-            opacity: 0.6;
+            opacity: 1;
+            transform: none;
+        }
+
+        .btn-cancel {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background-color: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .btn-cancel:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+            opacity: 1;
+            transform: none;
         }
 
         .no-orders {
@@ -379,6 +467,137 @@ try {
             background-color: #157347;
         }
 
+        /* Cancellation Modal */
+        .modal.cancel-modal {
+            display: none;
+        }
+
+        .cancel-modal .modal-content {
+            max-width: 500px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+
+        /* Reason Button Styles */
+        .reason-btn {
+            padding: 10px 12px;
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: center;
+            width: 100%;
+        }
+
+        .reason-btn:hover {
+            background: #e8e8e8;
+            border-color: #bbb;
+        }
+
+        .reason-btn-active {
+            background: #4CAF50;
+            color: white;
+            border-color: #45a049;
+            font-weight: 600;
+        }
+
+        .reason-btn-active:hover {
+            background: #45a049;
+            border-color: #3d8b40;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .modal-content {
+                margin: 20% auto;
+                width: 95%;
+                padding: 20px;
+            }
+
+            .modal-header h2 {
+                font-size: 18px;
+            }
+
+            .reason-btn {
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+
+            /* Single column for mobile */
+            div[style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        .modal-footer-cancel {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
         /* Mobile Menu Toggle */
         .mobile-menu-toggle {
             display: none;
@@ -483,6 +702,27 @@ try {
                 <p class="orders-subtitle">This is where your orders will be shown.</p>
             </div>
 
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; justify-content: flex-end;">
+                <a href="export_seller_orders.php" style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    border: none;
+                    cursor: pointer;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                    <i class="fas fa-file-pdf"></i>
+                    Export to PDF
+                </a>
+            </div>
+
             <?php if (isset($error_message)): ?>
                 <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                     <?php echo htmlspecialchars($error_message); ?>
@@ -493,6 +733,9 @@ try {
                 <table class="orders-table">
                     <thead>
                         <tr>
+                            <th>Student Number</th>
+                            <th>Student Name</th>
+                            <th>Organization</th>
                             <th>Product Name</th>
                             <th>Quantity</th>
                             <th>Total Price</th>
@@ -504,6 +747,9 @@ try {
                     <tbody>
                         <?php foreach ($orders as $order): ?>
                             <tr>
+                                <td><?php echo htmlspecialchars($order['student_number'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($order['student_name'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($order['student_organization'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($order['product_name']); ?></td>
                                 <td><?php echo htmlspecialchars($order['quantity']); ?></td>
                                 <td>₱<?php echo number_format($order['total_price'], 2); ?></td>
@@ -524,14 +770,22 @@ try {
                                     <button onclick='viewOrder(<?php echo json_encode($order); ?>)' class="action-btn btn-view">
                                         View
                                     </button>
-                                    <?php if ($order['status'] === 'completed'): ?>
+                                    <?php if ($order['status'] === 'cancelled'): ?>
+                                        <button class="action-btn btn-cancelled" disabled>
+                                            <i class="fas fa-times-circle"></i> Cancelled
+                                        </button>
+                                    <?php elseif ($order['status'] === 'completed'): ?>
                                         <button class="action-btn btn-received" disabled>
-                                            Received
+                                            <i class="fas fa-check-circle"></i> Received
                                         </button>
                                     <?php else: ?>
                                         <button onclick="markAsReceived(<?php echo $order['id']; ?>)"
                                                 class="action-btn btn-received">
                                             Mark as Received
+                                        </button>
+                                        <button onclick="openCancellationModal(<?php echo $order['id']; ?>, '<?php echo htmlspecialchars($order['product_name'], ENT_QUOTES); ?>')"
+                                                class="action-btn btn-cancel">
+                                            Cancel Order
                                         </button>
                                     <?php endif; ?>
                                 </td>
@@ -561,7 +815,74 @@ try {
         </div>
     </div>
 
+    <!-- Cancel Order Modal -->
+    <div id="cancelModal" class="modal cancel-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Cancel Order</h2>
+                <button class="close" onclick="closeCancellationModal()">&times;</button>
+            </div>
+            <form id="cancelForm" style="padding: 20px;">
+                <p style="margin-bottom: 15px; color: #555;">
+                    <strong>Product:</strong> <span id="cancelProductName"></span>
+                </p>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Reason(s) (or type custom reason below)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <button type="button" class="reason-btn" data-reason="Product discontinued">
+                            Discontinued
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Inventory unavailable">
+                            Inventory Issue
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Defective product">
+                            Defective Product
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Payment not received">
+                            Payment Not Received
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Supplier issue">
+                            Supplier Problem
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Other">
+                            Others
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cancellationReason" class="form-label">
+                        Cancellation Reason <span style="color: red;">*</span>
+                    </label>
+                    <textarea 
+                        id="cancellationReason" 
+                        class="form-textarea" 
+                        placeholder="Selected reasons will appear here. You can edit or add custom text..."
+                        required
+                        style="min-height: 120px; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                    <small style="color: #666; margin-top: 8px; display: block;">
+                        Click reason buttons to add them (multiple selections allowed). Edit the text as needed.
+                    </small>
+                </div>
+                
+                <div class="modal-footer-cancel" style="gap: 10px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeCancellationModal()" class="btn-secondary">
+                        Keep Order
+                    </button>
+                    <button type="submit" class="btn-danger">
+                        <i class="fas fa-trash-alt"></i> Confirm Cancellation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        let currentCancellationOrderId = null;
+        const selectedReasons = new Set();
+
         function markAsPaid(orderId) {
             if (confirm('Mark this order as Paid?')) {
                 fetch('update-order-status.php', {
@@ -614,6 +935,98 @@ try {
             }
         }
 
+        function openCancellationModal(orderId, productName) {
+            currentCancellationOrderId = orderId;
+            document.getElementById('cancelProductName').textContent = productName;
+            document.getElementById('cancellationReason').value = '';
+            document.getElementById('cancelModal').style.display = 'block';
+            
+            // Reset reason buttons
+            selectedReasons.clear();
+            document.querySelectorAll('.reason-btn').forEach(btn => {
+                btn.classList.remove('reason-btn-active');
+            });
+        }
+
+        function closeCancellationModal() {
+            document.getElementById('cancelModal').style.display = 'none';
+            currentCancellationOrderId = null;
+            document.getElementById('cancellationReason').value = '';
+            selectedReasons.clear();
+            document.querySelectorAll('.reason-btn').forEach(btn => {
+                btn.classList.remove('reason-btn-active');
+            });
+        }
+
+        // Setup reason button selection on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const reasonButtons = document.querySelectorAll('.reason-btn');
+            const cancellationReasonInput = document.getElementById('cancellationReason');
+            const cancelForm = document.getElementById('cancelForm');
+            
+            // Setup reason button clicks
+            reasonButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const reason = this.dataset.reason;
+                    
+                    // Toggle selection
+                    if (selectedReasons.has(reason)) {
+                        selectedReasons.delete(reason);
+                        this.classList.remove('reason-btn-active');
+                    } else {
+                        selectedReasons.add(reason);
+                        this.classList.add('reason-btn-active');
+                    }
+                    
+                    // Update textarea with selected reasons
+                    if (selectedReasons.size > 0) {
+                        cancellationReasonInput.value = Array.from(selectedReasons)
+                            .map(r => '• ' + r)
+                            .join('\n');
+                    } else {
+                        cancellationReasonInput.value = '';
+                    }
+                });
+            });
+            
+            // Handle form submission
+            if (cancelForm) {
+                cancelForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const reasonText = cancellationReasonInput.value.trim();
+                    if (!reasonText) {
+                        alert('Please select at least one cancellation reason or provide your own.');
+                        return;
+                    }
+                    
+                    if (!confirm('Are you sure you want to cancel this order? This will notify the student.')) {
+                        return;
+                    }
+                    
+                    fetch('update-order-status.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `order_id=${currentCancellationOrderId}&status=cancelled&cancellation_reason=${encodeURIComponent(reasonText)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Order cancelled successfully! Student has been notified.');
+                            closeCancellationModal();
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (data.message || 'Failed to cancel order'));
+                        }
+                    })
+                    .catch(error => {
+                        alert('Error: ' + error);
+                    });
+                });
+            }
+        });
+
         function viewOrder(order) {
             console.log('Order data:', order);
             const modal = document.getElementById('orderModal');
@@ -664,6 +1077,17 @@ try {
                 `;
             }
 
+            // Build cancellation reason HTML if order is cancelled
+            let cancellationHTML = '';
+            if (order.status === 'cancelled' && order.cancellation_reason) {
+                cancellationHTML = `
+                    <div class="order-detail">
+                        <strong>Cancellation Reason:</strong>
+                        <span style="color: #d32f2f;">${order.cancellation_reason}</span>
+                    </div>
+                `;
+            }
+
             // Build action button HTML based on status
             let actionHTML = '';
             if (order.status === 'pending') {
@@ -690,6 +1114,14 @@ try {
                     <div class="modal-footer">
                         <span style="color: #198754; font-weight: 600;">
                             <i class="fas fa-check-double"></i> Order Completed
+                        </span>
+                    </div>
+                `;
+            } else if (order.status === 'cancelled') {
+                actionHTML = `
+                    <div class="modal-footer">
+                        <span style="color: #d32f2f; font-weight: 600;">
+                            <i class="fas fa-times-circle"></i> Order Cancelled
                         </span>
                     </div>
                 `;
@@ -757,6 +1189,7 @@ try {
                     <span class="status-badge status-${order.status.toLowerCase()}">${order.status.toUpperCase()}</span>
                 </div>
                 ${claimingHTML}
+                ${cancellationHTML}
                 <div class="order-detail">
                     <strong>Payment Method:</strong>
                     <span>${order.payment_method ? order.payment_method.toUpperCase() : 'CASH ON HAND'}</span>
@@ -775,8 +1208,12 @@ try {
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('orderModal');
+            const cancelModal = document.getElementById('cancelModal');
             if (event.target == modal) {
                 closeModal();
+            }
+            if (event.target == cancelModal) {
+                closeCancellationModal();
             }
         }
 

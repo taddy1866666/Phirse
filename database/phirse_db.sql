@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 17, 2025 at 08:34 AM
+-- Generation Time: Nov 11, 2025 at 10:34 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -56,40 +56,6 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `notifications`
---
-
-INSERT INTO `notifications` (`id`, `student_id`, `order_id`, `product_id`, `type`, `title`, `message`, `is_read`, `created_at`) VALUES
-(1, 4, 1, 3, 'pending', 'Order Placed Successfully', 'Your order for KEYCHAIN has been placed. Reference: PHRS-20251015-9A3C8', 1, '2025-10-15 14:56:19'),
-(2, 3, 2, 3, 'pending', 'Order Placed Successfully', 'Your order for KEYCHAIN has been placed. Reference: PHRS-20251015-980E0', 0, '2025-10-15 15:02:04'),
-(3, 4, 3, 7, 'pending', 'Order Placed Successfully', 'Your order for sdasd has been placed. Reference: PHRS-20251015-4D825', 1, '2025-10-15 15:16:46'),
-(4, 4, 11, 14, 'pending', 'Order Placed Successfully', 'Your order for papuntang impyerno has been placed. Reference: PHRS-20251016-90BEF', 1, '2025-10-15 16:36:56'),
-(5, 4, 12, 14, 'pending', 'Order Placed Successfully', 'Your order for papuntang impyerno has been placed. Reference: PHRS-20251016-3742B', 1, '2025-10-15 16:37:00'),
-(6, 4, 13, 14, 'pending', 'Order Placed Successfully', 'Your order for papuntang impyerno has been placed. Reference: PHRS-20251016-F30BB', 1, '2025-10-15 16:38:18'),
-(7, 4, 14, 16, 'pending', 'Order Placed Successfully', 'Your order for BAG has been placed. Reference: PHRS-20251016-34DB5', 1, '2025-10-15 16:38:28'),
-(8, 4, 15, 15, 'pending', 'Order Placed Successfully', 'Your order for sdads has been placed. Reference: PHRS-20251016-08F70', 1, '2025-10-15 16:38:52'),
-(9, 4, 16, 15, 'pending', 'Order Placed Successfully', 'Your order for sdads has been placed. Reference: PHRS-20251016-E8277', 1, '2025-10-15 16:39:09'),
-(10, 4, 17, 15, 'pending', 'Order Placed Successfully', 'Your order for sdads has been placed. Reference: PHRS-20251016-24EE3', 1, '2025-10-15 16:42:16'),
-(11, 4, 18, 15, 'pending', 'Order Placed Successfully', 'Your order for sdads has been placed. Reference: PHRS-20251016-08E22', 1, '2025-10-15 16:42:33'),
-(12, 4, 19, 16, 'pending', 'Order Placed Successfully', 'Your order for BAG has been placed. Reference: PHRS-20251016-EC791', 1, '2025-10-15 16:50:16'),
-(13, 4, 20, 16, 'pending', 'Order Placed Successfully', 'Your order for BAG has been placed. Reference: PHRS-20251016-A6244', 1, '2025-10-15 16:50:49'),
-(14, 4, 21, 16, 'pending', 'Order Placed Successfully', 'Your order for BAG has been placed. Reference: PHRS-20251016-068E4', 1, '2025-10-15 16:51:12'),
-(15, 4, 22, 16, 'pending', 'Order Placed Successfully', 'Your order for BAG has been placed. Reference: PHRS-20251016-67742', 1, '2025-10-15 16:51:57'),
-(16, 4, 23, 12, 'paid', 'Order Placed Successfully', 'Your order for FUN RUN has been placed. Reference: PHRS-20251016-FAC0B', 1, '2025-10-15 16:52:57'),
-(17, 4, 24, 12, 'pending', 'Order Placed Successfully', 'Your order for FUN RUN has been placed. Reference: PHRS-20251016-C2F94', 1, '2025-10-15 16:53:50'),
-(18, 4, 25, 12, 'pending', 'Order Placed Successfully', 'Your order for FUN RUN has been placed. Reference: PHRS-20251016-58942', 1, '2025-10-15 16:54:00'),
-(19, 4, 26, 12, 'paid', 'Order Placed Successfully', 'Your order for FUN RUN has been placed. Reference: PHRS-20251016-FC702', 1, '2025-10-15 16:55:06'),
-(20, 4, 27, 17, 'pending', 'Order Placed Successfully', 'Your order for csdcds has been placed. Reference: PHRS-20251016-2B1CD', 1, '2025-10-15 17:01:14'),
-(21, 4, NULL, NULL, '', '', 'Your order status was updated to: Payment Received', 1, '2025-10-15 17:11:36'),
-(22, 4, 28, 15, 'pending', 'Order Placed Successfully', 'Your order for sdads has been placed. Reference: PHRS-20251016-F580E', 0, '2025-10-15 17:14:01'),
-(23, 4, 29, 17, 'pending', 'Order Placed Successfully', 'Your order for csdcds has been placed. Reference: PHRS-20251016-AF62D', 0, '2025-10-15 17:46:42'),
-(24, 18, 30, 22, 'pending', 'Order Placed Successfully', 'Your order for Self Care Cats Set has been placed. Reference: PHRS-20251017-179BC', 1, '2025-10-17 02:55:57'),
-(25, 18, 31, 27, 'paid', 'Order Placed Successfully', 'Your order for VITS ORGANIZATION SHIRT has been placed. Reference: PHRS-20251017-63EB4', 1, '2025-10-17 02:57:09'),
-(26, 18, 32, 27, 'paid', 'Order Placed Successfully', 'Your order for VITS ORGANIZATION SHIRT has been placed. Reference: PHRS-20251017-4C20E', 1, '2025-10-17 03:15:35'),
-(27, 18, NULL, NULL, '', '', 'Your order status was updated to: Ready for Claiming | Claiming Date: October 17, 2025 11:16 AM', 1, '2025-10-17 03:16:14'),
-(28, 18, NULL, NULL, '', '', 'Your order status was updated to: Completed', 1, '2025-10-17 03:16:32');
-
 -- --------------------------------------------------------
 
 --
@@ -105,22 +71,14 @@ CREATE TABLE `orders` (
   `student_id` int(11) DEFAULT NULL,
   `quantity` int(11) NOT NULL DEFAULT 1,
   `total_price` decimal(10,2) NOT NULL,
-  `status` enum('pending','paid','confirmed','claiming','completed') DEFAULT 'pending',
+  `status` enum('pending','paid','confirmed','claiming','completed','cancelled') DEFAULT 'pending',
   `payment_proof_path` varchar(255) DEFAULT NULL,
   `order_date` datetime NOT NULL DEFAULT current_timestamp(),
   `payment_method` enum('onhand','gcash') DEFAULT 'onhand',
   `product_size` varchar(10) DEFAULT NULL,
-  `claiming_datetime` datetime DEFAULT NULL
+  `claiming_datetime` datetime DEFAULT NULL,
+  `cancellation_reason` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `orders`
---
-
-INSERT INTO `orders` (`id`, `reference_number`, `user_id`, `seller_id`, `product_id`, `student_id`, `quantity`, `total_price`, `status`, `payment_proof_path`, `order_date`, `payment_method`, `product_size`, `claiming_datetime`) VALUES
-(30, 'PHRS-20251017-179BC', 18, 4, 22, 18, 1, 20.00, 'pending', NULL, '2025-10-17 10:55:57', '', NULL, NULL),
-(31, 'PHRS-20251017-63EB4', 18, 3, 27, 18, 1, 500.00, 'paid', '../uploads/payment_proofs/payment_18_27_1760669829.jpg', '2025-10-17 10:57:09', 'gcash', NULL, NULL),
-(32, 'PHRS-20251017-4C20E', 18, 3, 27, 18, 1, 500.00, 'completed', '../uploads/payment_proofs/payment_18_27_1760670935.jpg', '2025-10-17 11:15:35', 'gcash', NULL, '2025-10-17 11:16:00');
 
 -- --------------------------------------------------------
 
@@ -143,7 +101,8 @@ CREATE TABLE `products` (
   `ticket_type` enum('for_public','for_organization') DEFAULT NULL,
   `allowed_organizations` text DEFAULT NULL,
   `pre_order` tinyint(1) DEFAULT 0,
-  `max_order` int(11) DEFAULT NULL
+  `max_order` int(11) DEFAULT NULL,
+  `pdf_path` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -151,13 +110,36 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `seller_id`, `name`, `category`, `price`, `stock`, `description`, `image_path`, `status`, `rejection_reason`, `created_at`, `ticket_type`, `allowed_organizations`, `pre_order`, `max_order`) VALUES
-(21, 4, 'FUN', 'Event Ticket', 100.00, 40, 'Ticket Type: For Organization\n\n🏃‍♀️ Fun Run 2025 – Run for Fun and Fitness!\r\n\r\nGet ready to lace up and join us for an unforgettable Fun Run at SM Mall of Asia Grounds!\r\nHappening on November 16, 2025, at 8:00 AM, this exciting event is open to everyone — from first-time joggers to seasoned runners.\r\n\r\nEnjoy a morning filled with energy, laughter, and community spirit as you race along the scenic MOA route. Celebrate fitness, friendship, and fun with music, games, and great vibes waiting for you at the finish line!\r\n\r\n🏅 Event Details:\r\n📍 Location: SM Mall of Asia Grounds, Pasay City\r\n📅 Date: November 16, 2025\r\n🕗 Time: 8:00 AM\r\n\r\nDon’t miss out on this chance to make every step count — run for health, happiness, and good memories!', '../uploads/products/68f1a4afb4c0d_product_0.JPG', 'approved', NULL, '2025-10-17 02:06:39', 'for_organization', NULL, 0, 1),
-(22, 4, 'Self Care Cats Set', 'Merchandise', 20.00, 49, 'Organization: JSWAP\nType: Stickers\n\nRelax, recharge, and stay pawsitive with the Self Care Cats Sticker Set!\r\nAdorable cats doing self-care activities perfect for your journal, laptop, or water bottle. A cute reminder to slow down and take care of yourself.', '../uploads/products/68f1a53b22cc4_product_0.JPG', 'approved', NULL, '2025-10-17 02:08:59', NULL, NULL, 0, 1),
-(23, 3, 'VITS ORGANIZATION SHIRT', 'Organization Shirt', 500.00, 1000, 'Organization: VITS\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\nShow your tech pride in style with the official IT Organization Polo Shirt!\r\nDesigned for comfort, confidence, and a sleek professional look this polo represents the spirit of innovation and teamwork that defines every IT student.', '../uploads/products/68f1a8625871e_product_0.jpg', 'rejected', 'only size chart\r\n', '2025-10-17 02:22:26', NULL, NULL, 0, NULL),
-(27, 3, 'VITS ORGANIZATION SHIRT', 'Organization Shirt', 500.00, 998, 'Organization: VITS\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\nShow your tech pride in style with the official IT Organization Polo Shirt!\r\nDesigned for comfort, confidence, and a sleek professional look this polo represents the spirit of innovation and teamwork that defines every IT student.', '../uploads/products/68f1a9c1137c1_product_0.JPG', 'approved', NULL, '2025-10-17 02:28:17', NULL, NULL, 0, NULL),
-(28, 3, 'Button Pins', 'Merchandise', 20.00, 100, 'Organization: VITS\nType: Button Pins\n\nShow off your IT pride with these stylish IT Organization Button Pins!\r\nPerfect for your bags, lanyards, or shirts — these pins let you represent your tech spirit wherever you go.\r\n\r\nEach design reflects creativity, innovation, and the passion that defines every IT student. Whether you’re at an event, in class, or just hanging out, these pins are the perfect way to personalize your look and show your love for tech.\r\n\r\n✨ Details:\r\n\r\nDurable, glossy finish\r\n\r\nVibrant IT-themed designs\r\n\r\nLightweight and easy to pin anywhere\r\n\r\nGreat for giveaways, souvenirs, or daily use\r\n\r\nAdd a touch of tech pride and personality because every IT student deserves to shine!', '../uploads/products/68f1aa4a15203_product_0.JPG', 'approved', NULL, '2025-10-17 02:30:34', NULL, NULL, 0, 1),
-(29, 5, 'UPAS ORGANZATIONAL SHIRT', 'Organization Shirt', 500.00, 1000, 'Organization: UPAS\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\nWear your purpose with pride with the official Public Administration Organization Shirt!\r\nDesigned to represent leadership, service, and dedication to public good this shirt embodies what it means to be a true Public Administrator.\r\n\r\nMade from comfortable, high-quality fabric, it’s perfect for events, seminars, and everyday campus wear. Featuring the official organization logo and a clean, professional design, it symbolizes unity, excellence, and the commitment to serve with integrity.\r\n\r\n👕 Details:\r\n\r\nSoft and breathable fabric for all-day comfort\r\n\r\nPrinted Public Administration Organization logo\r\n\r\nAvailable in multiple sizes (Unisex fit)\r\n\r\nIdeal for academic events, organization gatherings, or casual wear\r\n\r\nLead with purpose. Serve with pride. 💼✨', '../uploads/products/68f1ac5909297_product_0.JPG,../uploads/products/68f1ac5909bb2_product_1.JPG', 'approved', NULL, '2025-10-17 02:39:21', NULL, NULL, 0, NULL),
-(30, 5, 'UPAS CELEBRATORY SHIRT', 'Merchandise', 300.00, 1000, 'Organization: UPAS\nType: Shirt\nSizes: XS, S, M, L, XL\n\nCelebrate excellence, unity, and pride with the official UPAS Celebratory Shirt!\r\nThis special edition shirt honors the achievements and milestones of the University of Public Administration Students (UPAS) a symbol of leadership, service, and success.\r\n\r\nCrafted from premium, breathable fabric, it’s designed for both comfort and style perfect for organization events, recognition days, and everyday wear. Featuring the UPAS logo and a commemorative design, this shirt represents the dedication and hard work of every future public servant.\r\n\r\nDetails:\r\n\r\nHigh-quality cotton blend for maximum comfort\r\n\r\nVibrant print featuring the UPAS emblem and celebratory design\r\n\r\nAvailable in multiple sizes (Unisex fit)\r\n\r\nIdeal for events, celebrations, and organization pride\r\n\r\nWear it loud, wear it proud  because every achievement deserves to be celebrated! ', '../uploads/products/68f1accf52822_product_0.JPG', 'approved', NULL, '2025-10-17 02:41:19', NULL, NULL, 0, 1);
+(52, 11, 'Sikolohiya ', 'Merchandise', 25.00, 99, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912da61ca2f0_product_0.JPG', 'approved', NULL, '2025-11-11 06:40:33', NULL, NULL, 0, 1),
+(53, 11, 'Be Kind To Your Mind', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912deb767dbd_product_0.JPG', 'approved', NULL, '2025-11-11 06:59:03', NULL, NULL, 0, 1),
+(54, 11, 'Butterfly1', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912df4c16622_product_0.JPG', 'approved', NULL, '2025-11-11 07:01:32', NULL, NULL, 0, 1),
+(55, 11, 'Psych', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912df7a55d40_product_0.JPG', 'approved', NULL, '2025-11-11 07:02:18', NULL, NULL, 0, 1),
+(56, 11, 'Psychology Degree', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912dfb877062_product_0.JPG', 'approved', NULL, '2025-11-11 07:03:20', NULL, NULL, 0, 1),
+(57, 11, 'Psychologist In Training ', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912e00ddfefb_product_0.JPG', 'approved', NULL, '2025-11-11 07:04:45', NULL, NULL, 0, 1),
+(58, 11, 'Magagalit Ba Si Maslow?', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912e066690bd_product_0.JPG', 'approved', NULL, '2025-11-11 07:06:14', NULL, NULL, 0, 1),
+(59, 11, 'Stop Comparing Yourself To Others', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912e0a795381_product_0.JPG', 'approved', NULL, '2025-11-11 07:07:19', NULL, NULL, 0, 1),
+(60, 11, 'Stop Comparing Yourself To Others', 'Merchandise', 25.00, 100, 'Organization: PSYCHSOC\nType: Pins\n\n', '../uploads/products/6912e0cd52940_product_0.JPG', 'approved', NULL, '2025-11-11 07:07:57', NULL, NULL, 0, 1),
+(61, 11, 'Sikolohiya ', 'Merchandise', 100.00, 100, 'Organization: PSYCHSOC\nType: Tote Bag\n\n', '../uploads/products/6912e100ba1b9_product_0.JPG', 'approved', NULL, '2025-11-11 07:08:48', NULL, NULL, 0, 1),
+(62, 11, 'End The Stigma ', 'Merchandise', 100.00, 100, 'Organization: PSYCHSOC\nType: Tote Bag\n\nMinimalist merch promoting mental health awareness.\r\nWear it. Share the message. End the stigma.', '../uploads/products/6912e168d6f8b_product_0.JPG', 'rejected', 'sorry wrong product description\r\n', '2025-11-11 07:10:32', NULL, NULL, 0, 1),
+(63, 11, 'Suhay Sikolohista, Husay Sikolihista', 'Merchandise', 100.00, 100, 'Organization: PSYCHSOC\nType: Tote Bag\n\nA canvas tote bag designed for those who study, practice, and value Psychology.\r\nMade with durable, thick canvas perfect for everyday use at school, clinic duties, or casual outings.\r\nLightweight, spacious, and easy to carry.', '../uploads/products/6912e23ff3468_product_0.JPG', 'approved', NULL, '2025-11-11 07:14:07', NULL, NULL, 0, 1),
+(64, 11, 'End The Stigma', 'Merchandise', 100.00, 100, 'Organization: PSYCHSOC\nType: Tote Bag\n\nA canvas tote bag that carries a message with purpose.\r\nMade from thick, durable canvas that’s perfect for daily use school, errands, or work.\r\nSpacious, reusable, and comfortable to bring anywhere.', '../uploads/products/6912e292d356d_product_0.JPG', 'approved', NULL, '2025-11-11 07:15:30', NULL, NULL, 0, 1),
+(65, 9, 'VITS OFFICIAL ORGANIZATIONAL SHIRT 2025', 'Organization Shirt', 500.00, 700, 'Organization: VITS\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\nThe VITS Official Organizational Polo Shirt 2025 represents unity, professionalism, and pride as members of the Information Technology community.\r\nMade with high-quality, breathable fabric that provides long-lasting comfort for everyday wear whether in class, events, or department activities.\r\nDesigned with a clean and modern look, featuring the official VITS branding for a polished and professional appearance.\r\n\r\nThis polo shirt is more than uniform it’s a symbol of belonging, collaboration, and excellence in the field of IT.', '../uploads/products/6912ea5429651_product_0.JPG', 'approved', NULL, '2025-11-11 07:48:36', NULL, NULL, 0, 1),
+(66, 9, 'Button Pins VITS', 'Merchandise', 30.00, 100, 'Organization: VITS\nType: Pins\n\nMinimalist button pins designed for Information Technology students and enthusiasts.\r\nMade with durable metal backing and smooth, clear print to ensure long-lasting quality.\r\nPerfect for personalizing your tote bag, ID lace, jacket, or laptop pouch while showing pride in the IT field.', '../uploads/products/6912eacab7a33_product_0.JPG', 'approved', NULL, '2025-11-11 07:50:34', NULL, NULL, 0, 1),
+(67, 9, 'Beaded Charms ', 'Merchandise', 30.00, 100, 'Organization: VITS\nType: Bracelet \n\n• Handmade beaded charm bracelet\r\n• Lightweight & comfortable\r\n• Cute, aesthetic, and easy to style\r\n• Perfect for daily wear or gifting', '../uploads/products/6912eb4d2e1f7_product_0.JPG', 'approved', NULL, '2025-11-11 07:52:45', NULL, NULL, 0, 1),
+(68, 12, 'Celebratory Shirt UPAS ', 'Merchandise', 500.00, 1000, 'Organization: UPAS\nType: Shirt \nSizes: XS, S, M, L, XL\n\nThe UPAS Celebratory Shirt is designed to commemorate unity, commitment, and pride within the organization.\r\nMade from soft, breathable, and high-quality fabric, it provides comfort for daily wear perfect for events, assemblies, outreach programs, and casual days on campus.\r\nFeaturing a clean and meaningful design, this shirt represents shared achievements and the ongoing spirit of service and solidarity.', '../uploads/products/6912ed3a1a352_product_0.JPG', 'approved', NULL, '2025-11-11 08:00:58', NULL, NULL, 0, 1),
+(69, 12, 'UPAS ORGANZATIONAL SHIRT', 'Organization Shirt', 500.00, 1000, 'Organization: UPAS\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\nThe UPAS Organizational Shirt represents unity, identity, and pride within the organization.\r\nMade from soft, breathable, and durable fabric, it’s comfortable for everyday wear whether in classes, organizational events, community activities, or casual days on campus.\r\nFeaturing the official UPAS design, this shirt reflects the organization’s values and collective spirit.', '../uploads/products/6912edcd3a507_product_0.JPG,../uploads/products/6912edcd3af6b_product_1.JPG', 'approved', NULL, '2025-11-11 08:03:25', NULL, NULL, 0, 1),
+(70, 13, 'Self Care Cats Set', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers\n\n', '../uploads/products/6912ef2d361ed_product_0.JPG', 'approved', NULL, '2025-11-11 08:09:17', NULL, NULL, 0, 1),
+(71, 13, 'SW Badge Set', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers\n\n', '../uploads/products/6912ef850150d_product_0.JPG', 'approved', NULL, '2025-11-11 08:10:45', NULL, NULL, 0, 1),
+(72, 13, 'Coqutte Bear Set', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers \n\n', '../uploads/products/6912efbeac597_product_0.JPG', 'approved', NULL, '2025-11-11 08:11:42', NULL, NULL, 0, 1),
+(73, 13, 'CAS Set!', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers\n\n', '../uploads/products/6912efee7dfc8_product_0.JPG', 'approved', NULL, '2025-11-11 08:12:30', NULL, NULL, 0, 1),
+(74, 13, 'Cartoon Set', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers\n\n', '../uploads/products/6912f0216fa14_product_0.JPG', 'approved', NULL, '2025-11-11 08:13:21', NULL, NULL, 0, 1),
+(75, 13, 'Social Work! Set', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers\n\n', '../uploads/products/6912f04d6bcda_product_0.JPG', 'approved', NULL, '2025-11-11 08:14:05', NULL, NULL, 0, 1),
+(76, 13, 'Future Loading Set', 'Merchandise', 20.00, 100, 'Organization: JSWAP\nType: Stickers\n\n', '../uploads/products/6912f08e0d20b_product_0.JPG', 'approved', NULL, '2025-11-11 08:15:10', NULL, NULL, 0, 1),
+(77, 16, 'JMAP ORGANIZATIONAL SHIRT 2025', 'Organization Shirt', 500.00, 1000, 'Organization: JMAP\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\n', '../uploads/products/6912f5435b25d_product_0.JPG', 'approved', NULL, '2025-11-11 08:35:15', NULL, NULL, 0, 1),
+(78, 16, 'JPMAP Brooch Pin', 'Merchandise', 25.00, 50, 'Organization: JMAP\nType: Pins\n\n', '../uploads/products/6912f5d5b4030_product_0.JPG', 'approved', NULL, '2025-11-11 08:37:41', NULL, NULL, 0, 1),
+(79, 16, 'CBA Brooch Pin', 'Merchandise', 25.00, 100, 'Organization: JMAP\nType: Pin\n\n', '../uploads/products/6912f5f893104_product_0.JPG', 'approved', NULL, '2025-11-11 08:38:16', NULL, NULL, 0, 1),
+(80, 16, 'Crochet Keychains', 'Merchandise', 25.00, 50, 'Organization: JMAP\nType: Keychains\n\n', '../uploads/products/6912f6310562c_product_0.JPG', 'approved', NULL, '2025-11-11 08:39:13', NULL, NULL, 0, 1),
+(81, 17, 'ACES ORGANIZATIONAL SHIRT 2025', 'Organization Shirt', 500.00, 1000, 'Organization: ACES\nType: Polo Shirt\nSizes: XS, S, M, L, XL, 2XL\n\nThe ACES Organizational Polo Shirt 2025 embodies professionalism, unity, and pride as part of the Civil Engineering community.\r\nCrafted with high-quality, breathable fabric, it provides lasting comfort whether worn during classes, field activities, organization events, or official representation.\r\nDesigned with a clean and polished look, featuring the ACES emblem and Civil Engineering identity, this polo shirt reflects dedication to service, discipline, and excellence in the field.', '../uploads/products/6912fbad7f465_product_0.JPG,../uploads/products/6912fbad8163d_product_1.JPG', 'approved', NULL, '2025-11-11 09:02:37', NULL, NULL, 0, 1);
 
 -- --------------------------------------------------------
 
@@ -188,9 +170,18 @@ CREATE TABLE `sellers` (
 --
 
 INSERT INTO `sellers` (`id`, `seller_name`, `organization`, `organization_name`, `contact_number`, `password`, `email`, `logo_path`, `gcash_qr_path`, `description`, `status`, `created_at`, `qr_code_path`, `gcash_number`, `gcash_name`) VALUES
-(3, 'Gruu', 'VITS', NULL, '094533453543', '$2y$10$Hsh8xNJAIDK3eo79Wqt8UeXYPEtc2rAXgtIbgarpjzollPhpMVoga', NULL, '../uploads/logos/68f1a371eb7c0.jpg', '../uploads/gcash/gcash_qr_3_1760670943.png', NULL, 'active', '2025-10-17 02:01:22', NULL, NULL, NULL),
-(4, 'Kenn', 'JSWAP', NULL, '095345435354', '$2y$10$EfVXQJJefU74iijEwKRk6.rmCbM45L84YRKByhb6bZyfQbfoS4PZW', NULL, '../uploads/logos/68f1a399f077f.jpg', NULL, NULL, 'active', '2025-10-17 02:02:02', NULL, NULL, NULL),
-(5, 'Ashley', 'UPAS', NULL, '090453534535', '$2y$10$1eqVZtuh30fmxcoQxYhc..SzJAkeqs5RVwh.UsyFaX0f/KQIfBvyK', NULL, '../uploads/logos/68f1ab3932315.jpg', NULL, NULL, 'active', '2025-10-17 02:34:33', NULL, NULL, NULL);
+(9, 'JC MARTIN MENDOZA', 'VITS', NULL, '099532772362', '$2y$10$QYC31qnrXI.6RKI.wkZSDuA/wY/BEA/OhnjGunS8XsiQgU50taW76', NULL, '../uploads/logos/6912cadac878d.jpg', NULL, NULL, 'active', '2025-11-11 05:34:18', NULL, NULL, NULL),
+(11, 'ALTHEA EMELINE FRANCISCO', 'PSYCHSOC', NULL, '09451039515', '$2y$10$P2goJZzqLWCiOrflM6nBOezu44pPopTxlDcXXh9GJ/SoiNc/vAE92', NULL, '../uploads/logos/6912d1874537d.jpg', NULL, NULL, 'active', '2025-11-11 06:02:47', NULL, NULL, NULL),
+(12, 'ALYSSA VILLERO', 'UPAS', NULL, '098675547656', '$2y$10$DmRHfkxsWsIkjnx6.87tbu4GkfLkYHY8FwA1hB1OUI8TVJGpmp/4q', NULL, '../uploads/logos/6912ec612802e.jpg', NULL, NULL, 'active', '2025-11-11 07:57:21', NULL, NULL, NULL),
+(13, 'TREXIE ANN MENDOZA', 'JSWAP', NULL, '094353213133', '$2y$10$rgxibMlaE4Va8cKeTPFoQOP1mGDe98SJBVSaK1POdxBj6myTSTFMO', NULL, '../uploads/logos/6912eebc906d9.jpg', NULL, NULL, 'active', '2025-11-11 08:07:24', NULL, NULL, NULL),
+(14, 'PRINCESS KEZEAH ROSITO', 'BACTA', NULL, '098564645646', '$2y$10$o1TaIf6N9pQGMcFZXdODJOb.5hNnir3HMrM8sdVE8Ofyo6LkM4ZlC', NULL, '../uploads/logos/6912f136b3952.jpg', NULL, NULL, 'active', '2025-11-11 08:17:58', NULL, NULL, NULL),
+(15, 'CATHERIN GATAB', 'SCIRE', NULL, '095343453453', '$2y$10$/QxCZvhT0hEo1EyHWw.veubsURwD4GeyCQmySCEk3uc8GlJosWHuG', NULL, '../uploads/logos/6912f168b4078.jpg', NULL, NULL, 'active', '2025-11-11 08:18:48', NULL, NULL, NULL),
+(16, 'MARIELLE BORJA', 'JMAP', NULL, '095435345354', '$2y$10$ok2BqNU5R2cRAd2BqKpT7eWmIJ47HIpFAAp2WouII37uRJjQpEJam', NULL, '../uploads/logos/6912f4caa967c.jpg', NULL, NULL, 'active', '2025-11-11 08:33:14', NULL, NULL, NULL),
+(17, 'CESRIC LEI RESONTOC', 'ACES', NULL, '096545645645', '$2y$10$XrllDm1TLcFcUwoZOCG/vujaFCXCXk8..FT04qr.VwEnzizQ6In.i', NULL, '../uploads/logos/6912f7a194c76.jpg', NULL, NULL, 'active', '2025-11-11 08:45:21', NULL, NULL, NULL),
+(18, 'CARL FRANCIS NABATAR', 'BPS', NULL, '095464564564', '$2y$10$r88vlk14c3QveyHdBbbsse2y2eBiWyoF9h7grg.hcTKr1okC4FzzC', NULL, '../uploads/logos/6912fa6b1ae9b.jpg', NULL, NULL, 'active', '2025-11-11 08:57:15', NULL, NULL, NULL),
+(19, 'GABRIELLA GEM TALAVERA', 'BASEEC', NULL, '096544565444', '$2y$10$LH8gthLaDxZ.hYezHolroOn7u0cig4zuwsBZ0nD41IL5d2viD5DxW', NULL, '../uploads/logos/6912fdc6cbe23.jpg', NULL, NULL, 'active', '2025-11-11 09:11:35', NULL, NULL, NULL),
+(20, 'MARIAN JOY FABELLO', 'SADAFIL', NULL, '094543543534', '$2y$10$lV9XUnqhUkocpDH3MKs.IuOr39TIr64ceMZIpehJs781y7VbAYQ6u', NULL, '../uploads/logos/69130298274f9.jpg', NULL, NULL, 'active', '2025-11-11 09:32:08', NULL, NULL, NULL),
+(21, 'JASMINE GAMBOA', 'AEES', NULL, '097655657657', '$2y$10$yNaBw5Pbzrcsz86ss6pZQuPGhuE9jfG8Tu9nFfUvPk3JXk8Un2SAO', NULL, '../uploads/logos/6913030025f62.jpg', NULL, NULL, 'active', '2025-11-11 09:33:52', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -215,63 +206,24 @@ CREATE TABLE `seller_notifications` (
 --
 
 INSERT INTO `seller_notifications` (`id`, `seller_id`, `product_id`, `order_id`, `type`, `title`, `message`, `is_read`, `created_at`) VALUES
-(1, 1, 1, NULL, 'approved', 'Product Approved', 'Your product \"STICKERS\" has been approved by admin and is now live!', 0, '2025-10-15 14:34:21'),
-(2, 1, 2, NULL, 'approved', 'Product Approved', 'Your product \"papuntang langit\" has been approved by admin and is now live!', 0, '2025-10-15 14:35:56'),
-(3, 1, 3, NULL, 'approved', 'Product Approved', 'Your product \"KEYCHAIN\" has been approved by admin and is now live!', 0, '2025-10-15 14:55:27'),
-(4, 1, 3, 1, 'order', 'New Order Received', 'sige ordered 1 x KEYCHAIN - Total: ₱30.00', 0, '2025-10-15 14:56:19'),
-(5, 1, 4, NULL, 'approved', 'Product Approved', 'Your product \"aaaaaa\" has been approved by admin and is now live!', 0, '2025-10-15 14:59:00'),
-(6, 1, 3, 2, 'order', 'New Order Received', 'Pedro Reyes ordered 1 x KEYCHAIN - Total: ₱30.00', 0, '2025-10-15 15:02:04'),
-(7, 1, 5, NULL, 'rejected', 'Product Rejected', 'Your product \"gg\" has been rejected. Reason: wqe', 0, '2025-10-15 15:15:36'),
-(8, 1, 6, NULL, 'rejected', 'Product Rejected', 'Your product \"gg\" has been rejected. Reason: adw', 0, '2025-10-15 15:15:41'),
-(9, 1, 7, NULL, 'approved', 'Product Approved', 'Your product \"sdasd\" has been approved by admin and is now live!', 0, '2025-10-15 15:16:24'),
-(10, 1, 7, 3, 'order', 'New Order Received', 'sige ordered 1 x sdasd - Total: ₱123.00', 0, '2025-10-15 15:16:46'),
-(11, 1, 7, NULL, 'approved', 'Product Approved', 'Your product \"sdasd\" has been approved by admin and is now live!', 0, '2025-10-15 15:24:16'),
-(12, 1, 8, NULL, 'approved', 'Product Approved', 'Your product \"ticket papuntang langit\" has been approved by admin and is now live!', 0, '2025-10-15 15:25:14'),
-(13, 1, 11, NULL, 'rejected', 'Product Rejected', 'Your product \"ticket papuntang langit\" has been rejected. Reason: kl;\r\n', 0, '2025-10-15 15:31:20'),
-(14, 1, 12, NULL, 'approved', 'Product Approved', 'Your product \"FUN RUN\" has been approved by admin and is now live!', 0, '2025-10-15 15:31:28'),
-(15, 1, 13, NULL, 'approved', 'Product Approved', 'Your product \"daadsdas\" has been approved by admin and is now live!', 0, '2025-10-15 15:36:41'),
-(16, 1, 14, NULL, 'approved', 'Product Approved', 'Your product \"papuntang impyerno\" has been approved by admin and is now live!', 0, '2025-10-15 15:44:47'),
-(17, 1, 15, NULL, 'approved', 'Product Approved', 'Your product \"sdads\" has been approved by admin and is now live!', 0, '2025-10-15 15:53:32'),
-(18, 1, 16, NULL, 'approved', 'Product Approved', 'Your product \"BAG\" has been approved by admin and is now live!', 0, '2025-10-15 16:03:40'),
-(19, 1, 16, NULL, 'approved', 'Product Approved', 'Your product \"BAG\" has been approved by admin and is now live!', 0, '2025-10-15 16:36:51'),
-(20, 1, 14, 11, 'order', 'New Order Received', 'sige ordered 1 x papuntang impyerno - Total: ₱123.00', 0, '2025-10-15 16:36:56'),
-(21, 1, 14, 12, 'order', 'New Order Received', 'sige ordered 1 x papuntang impyerno - Total: ₱123.00', 0, '2025-10-15 16:37:00'),
-(22, 1, 14, 13, 'order', 'New Order Received', 'sige ordered 1 x papuntang impyerno - Total: ₱123.00', 0, '2025-10-15 16:38:18'),
-(23, 1, 16, 14, 'order', 'New Order Received', 'sige ordered 1 x BAG - Total: ₱56.00', 0, '2025-10-15 16:38:28'),
-(24, 1, 15, 15, 'order', 'New Order Received', 'sige ordered 1 x sdads - Total: ₱176.00', 0, '2025-10-15 16:38:52'),
-(25, 1, 15, 16, 'order', 'New Order Received', 'sige ordered 1 x sdads - Total: ₱176.00', 0, '2025-10-15 16:39:09'),
-(26, 1, 16, NULL, 'approved', 'Product Approved', 'Your product \"BAG\" has been approved by admin and is now live!', 0, '2025-10-15 16:39:23'),
-(27, 1, 15, 17, 'order', 'New Order Received', 'sige ordered 1 x sdads - Total: ₱176.00', 0, '2025-10-15 16:42:16'),
-(28, 1, 15, 18, 'order', 'New Order Received', 'sige ordered 1 x sdads - Total: ₱176.00', 0, '2025-10-15 16:42:33'),
-(29, 1, 16, 19, 'order', 'New Order Received', 'sige ordered 1 x BAG - Total: ₱56.00', 0, '2025-10-15 16:50:16'),
-(30, 1, 16, 20, 'order', 'New Order Received', 'sige ordered 1 x BAG - Total: ₱56.00', 0, '2025-10-15 16:50:49'),
-(31, 1, 16, 21, 'order', 'New Order Received', 'sige ordered 1 x BAG - Total: ₱56.00', 0, '2025-10-15 16:51:12'),
-(32, 1, 16, 22, 'order', 'New Order Received', 'sige ordered 1 x BAG - Total: ₱56.00', 0, '2025-10-15 16:51:57'),
-(33, 1, 12, 23, 'order', 'New Order Received', 'sige ordered 1 x FUN RUN - Total: ₱123.00', 0, '2025-10-15 16:52:57'),
-(34, 1, 12, 24, 'order', 'New Order Received', 'sige ordered 1 x FUN RUN - Total: ₱123.00', 0, '2025-10-15 16:53:50'),
-(35, 1, 12, 25, 'order', 'New Order Received', 'sige ordered 1 x FUN RUN - Total: ₱123.00', 0, '2025-10-15 16:54:00'),
-(36, 1, 12, 26, 'order', 'New Order Received', 'sige ordered 1 x FUN RUN - Total: ₱123.00', 0, '2025-10-15 16:55:06'),
-(37, 1, 16, NULL, 'approved', 'Product Approved', 'Your product \"BAG\" has been approved by admin and is now live!', 0, '2025-10-15 16:56:29'),
-(38, 1, 17, NULL, 'approved', 'Product Approved', 'Your product \"csdcds\" has been approved by admin and is now live!', 0, '2025-10-15 17:00:54'),
-(39, 1, 17, 27, 'order', 'New Order Received', 'sige ordered 1 x csdcds - Total: ₱123.00', 0, '2025-10-15 17:01:14'),
-(40, 1, 15, 28, 'order', 'New Order Received', 'sige ordered 1 x sdads - Total: ₱176.00', 0, '2025-10-15 17:14:01'),
-(41, 2, 19, NULL, 'approved', 'Product Approved', 'Your product \"adsads\" has been approved by admin and is now live!', 0, '2025-10-15 17:15:33'),
-(42, 2, 18, NULL, 'approved', 'Product Approved', 'Your product \"sdadsasd\" has been approved by admin and is now live!', 0, '2025-10-15 17:15:34'),
-(43, 2, 20, NULL, 'approved', 'Product Approved', 'Your product \"dsadasd\" has been approved by admin and is now live!', 0, '2025-10-15 17:28:46'),
-(44, 1, 17, 29, 'order', 'New Order Received', 'sige ordered 1 x csdcds - Total: ₱123.00', 0, '2025-10-15 17:46:42'),
-(45, 4, 22, NULL, 'approved', 'Product Approved', 'Your product \"Self Care Cats Set\" has been approved by admin and is now live!', 0, '2025-10-17 02:09:29'),
-(46, 4, 21, NULL, 'approved', 'Product Approved', 'Your product \"FUN\" has been approved by admin and is now live!', 0, '2025-10-17 02:09:31'),
-(47, 3, 23, NULL, 'rejected', 'Product Rejected', 'Your product \"VITS ORGANIZATION SHIRT\" has been rejected. Reason: only size chart\r\n', 1, '2025-10-17 02:23:06'),
-(48, 3, 24, NULL, 'approved', 'Product Approved', 'Your product \"VITS ORGANIZATION SHIRT\" has been approved by admin and is now live!', 1, '2025-10-17 02:24:58'),
-(49, 3, 25, NULL, 'approved', 'Product Approved', 'Your product \"VITS ORGANIZATION SHIRT\" has been approved by admin and is now live!', 1, '2025-10-17 02:26:14'),
-(50, 3, 26, NULL, 'approved', 'Product Approved', 'Your product \"VITS ORGANIZATION SHIRT\" has been approved by admin and is now live!', 1, '2025-10-17 02:27:29'),
-(51, 3, 27, NULL, 'approved', 'Product Approved', 'Your product \"VITS ORGANIZATION SHIRT\" has been approved by admin and is now live!', 1, '2025-10-17 02:28:23'),
-(52, 3, 28, NULL, 'approved', 'Product Approved', 'Your product \"Button Pins\" has been approved by admin and is now live!', 1, '2025-10-17 02:30:40'),
-(53, 5, 30, NULL, 'approved', 'Product Approved', 'Your product \"UPAS CELEBRATORY SHIRT\" has been approved by admin and is now live!', 0, '2025-10-17 02:41:30'),
-(54, 5, 29, NULL, 'approved', 'Product Approved', 'Your product \"UPAS ORGANZATIONAL SHIRT\" has been approved by admin and is now live!', 0, '2025-10-17 02:41:32'),
-(55, 4, 22, 30, 'order', 'New Order Received', 'Pedro Reyes ordered 1 x Self Care Cats Set - Total: ₱20.00', 0, '2025-10-17 02:55:57'),
-(56, 3, 27, 31, 'order', 'New Order Received', 'Pedro Reyes ordered 1 x VITS ORGANIZATION SHIRT - Total: ₱500.00', 1, '2025-10-17 02:57:09'),
-(57, 3, 27, 32, 'order', 'New Order Received', 'Pedro Reyes ordered 1 x VITS ORGANIZATION SHIRT - Total: ₱500.00', 1, '2025-10-17 03:15:35');
+(145, 9, 67, NULL, 'approved', 'Product Approved', 'Your product \"Beaded Charms \" has been approved by admin and is now live!', 0, '2025-11-11 07:53:04'),
+(146, 9, 66, NULL, 'approved', 'Product Approved', 'Your product \"Button Pins VITS\" has been approved by admin and is now live!', 0, '2025-11-11 07:53:06'),
+(147, 9, 65, NULL, 'approved', 'Product Approved', 'Your product \"VITS OFFICIAL ORGANIZATIONAL SHIRT 2025\" has been approved by admin and is now live!', 0, '2025-11-11 07:53:08'),
+(148, 12, 68, NULL, 'approved', 'Product Approved', 'Your product \"Celebratory Shirt UPAS \" has been approved by admin and is now live!', 0, '2025-11-11 08:03:47'),
+(149, 12, 69, NULL, 'approved', 'Product Approved', 'Your product \"UPAS ORGANZATIONAL SHIRT\" has been approved by admin and is now live!', 0, '2025-11-11 08:03:50'),
+(150, 13, 70, NULL, 'approved', 'Product Approved', 'Your product \"Self Care Cats Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:09:39'),
+(151, 13, 71, NULL, 'approved', 'Product Approved', 'Your product \"SW Badge Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:14:11'),
+(152, 13, 75, NULL, 'approved', 'Product Approved', 'Your product \"Social Work! Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:14:12'),
+(153, 13, 74, NULL, 'approved', 'Product Approved', 'Your product \"Cartoon Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:14:13'),
+(154, 13, 73, NULL, 'approved', 'Product Approved', 'Your product \"CAS Set!\" has been approved by admin and is now live!', 0, '2025-11-11 08:14:14'),
+(155, 13, 72, NULL, 'approved', 'Product Approved', 'Your product \"Coqutte Bear Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:14:16'),
+(156, 13, 72, NULL, 'approved', 'Product Approved', 'Your product \"Coqutte Bear Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:15:15'),
+(157, 13, 76, NULL, 'approved', 'Product Approved', 'Your product \"Future Loading Set\" has been approved by admin and is now live!', 0, '2025-11-11 08:15:17'),
+(158, 16, 80, NULL, 'approved', 'Product Approved', 'Your product \"Crochet Keychains\" has been approved by admin and is now live!', 0, '2025-11-11 08:39:19'),
+(159, 16, 79, NULL, 'approved', 'Product Approved', 'Your product \"CBA Brooch Pin\" has been approved by admin and is now live!', 0, '2025-11-11 08:39:20'),
+(160, 16, 78, NULL, 'approved', 'Product Approved', 'Your product \"JPMAP Brooch Pin\" has been approved by admin and is now live!', 0, '2025-11-11 08:39:21'),
+(161, 16, 77, NULL, 'approved', 'Product Approved', 'Your product \"JMAP ORGANIZATIONAL SHIRT 2025\" has been approved by admin and is now live!', 0, '2025-11-11 08:39:23'),
+(162, 17, 81, NULL, 'approved', 'Product Approved', 'Your product \"ACES ORGANIZATIONAL SHIRT 2025\" has been approved by admin and is now live!', 0, '2025-11-11 09:03:08');
 
 -- --------------------------------------------------------
 
@@ -296,15 +248,17 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `student_number`, `student_name`, `organization`, `course_section`, `contact_number`, `email`, `password`, `created_at`) VALUES
-(7, '22-1678', 'Ava Srinivasan', 'JSWAP', 'BSSW 3-1', '9123456789', 'AvaSrinivasan@plv.edu.ph', '$2y$10$nXh3tVjNo1KeJ0O5fNQ4rekAJwg6iLyhi5q/Oqe2KiFLlkfgyJgza', '2025-10-17 02:14:44'),
-(8, '22-4533', 'Ethan Sriram', 'JSWAP', 'BSSW 5-3', '9187654321', 'EthanSriram@plv.edu.ph', '$2y$10$KICJzEhIKOrqBfGwiSHMCu8PIWjnYfGkTGObSJnhy59f7FBphnUcy', '2025-10-17 02:14:44'),
-(9, '22-5678', 'Maya Srisan', 'JSWAP', 'BSSW 3-7', '9156789012', 'MayaSrisan@plv.edu.ph', '$2y$10$ZZlVqdU.mBZMbnc8xAWo4ehXk9NUVve1WKsIqjmYhoIu3uUvTAP3m', '2025-10-17 02:14:44'),
-(13, '22-9563', 'Alyssa Marie Santos', 'UPAS', 'BSPA 3-1', '9123456789', 'alyssa.santos@plv.edu.ph', '$2y$10$01WNzT8yJaHb0KvIYODceeDiZx4aMfm8D2MREpe/NdsM2yHwVLopm', '2025-10-17 02:51:03'),
-(14, '22-4532', 'John Patrick Dela Cruz', 'UPAS', 'BSPA 5-3', '9187654321', 'john.delacruz@plv.edu.ph', '$2y$10$l8aIkt3HruSYob2KpmDFLei750VcK84xUWgNdyiS3zknbHVP6lXUy', '2025-10-17 02:51:03'),
-(15, '22-6546', 'Maria Angela Ramirez', 'UPAS', 'BSPA 3-7', '9156789012', 'maria.ramirez@plv.edu.ph', '$2y$10$l3HRctLQNwi4tQD3vEZKvudRvwzZekVvyFIawjziU9R2ZeI9KsHse', '2025-10-17 02:51:04'),
-(16, '22-1034', 'Juan Dela Cruz', 'VITS', 'BSIT 3-1', '09123456789', 'juan.delacruz@plv.edu.ph', '$2y$10$DA29B3msTymK0hF8jg8XTub0.qZX/v6aFXDEVOh.G3a9pmotvBeha', '2025-10-17 02:53:26'),
-(17, '22-2222', 'Maria Santos', 'VITS', 'BSIT 5-3', '09187654321', 'maria.santos@plv.edu.ph', '$2y$10$eCbOydV3QXAh18Nc0hhb/ej8K0nKBkXGbza47/lSh1Rcdp36LYdCK', '2025-10-17 02:53:26'),
-(18, '22-1234', 'Pedro Reyes', 'VITS', 'BSIT 3-7', '09156789012', 'pedro.reyes@plv.edu.ph', '$2y$10$zYGuhIxOtaAzDpdK6BCwSOkBAm46jhYoC6OS708sW.oHIH6ryah/2', '2025-10-17 02:53:26');
+(35, '22-1234', 'KALAMARES', 'PSYCHSOC', 'BSPA 2-1', '0945335333', 'GEGE@plv.edu.ph', '$2y$10$P9eCbVsRI/qxKsZO737Sz.gxBKle1GzMkZ1mfnvMDV0cjm/jYXyrC', '2025-11-11 06:43:06'),
+(62, '25-3106', 'ACOSTA, Rain Shia', 'VITS', 'BSIT 3-1', '9152301741', 'rain.acosta@plv.edu.ph', '$2y$10$ONoNWQTNun3qSfX2QWIQReLbnUG0XmUhXVDY4FvJCY9/tgxFmI2bW', '2025-11-11 07:42:39'),
+(63, '25-2041', 'LIM, Eurica Danielle', 'VITS', 'BSIT 1-3', '9234415892', 'eurica.lim@plv.edu.ph', '$2y$10$OFRdg22qFinrj0TbZkqd9uwn7hY8kNuYBRjwPhlCYjaJuwq4ZV38e', '2025-11-11 07:42:39'),
+(64, '25-2826', 'MAGSIMAPOY, Neil AnthonyNO, Nate Vlademyr', 'VITS', 'BSIT 3-7', '9087723164', 'nate.magsino@plv.edu.ph', '$2y$10$N9CbWfm9.gVongpTVwWop.KENji6GZ3qITjC9UxzNnEMahu1/lawC', '2025-11-11 07:42:40'),
+(65, '24-3391', 'MAPOY, Neil Anthony', 'VITS', 'BSIT 3-8', '9168849021', 'neil.mapoy@plv.edu.ph', '$2y$10$LjJSOsa3CE7sL8jJSeSnBuRuPcrQ1jdbJ63vWVsXcuB9U96ChMxZu', '2025-11-11 07:42:40'),
+(66, '24-3135', 'RAMIREZ, Justin Raphael', 'VITS', 'BSIT 3-9', '9273516408', 'justin.ramirez@plv.edu.ph', '$2y$10$sQQcPAplOK5G0mEy9ldZ7O0Lx1ZuayHlhF4DLia0PVIDBX/Qwp.we', '2025-11-11 07:42:40'),
+(67, '23-3423', 'BERNARDINO, Adrian', 'VITS', 'BSIT 2-1', '9197342285', 'adrian.bernardino@plv.edu.ph', '$2y$10$xWQy7H9bHCubhoa34r3Hu.z0uKTfJe2vDMqX.WR.wwsm7geoMGEQq', '2025-11-11 07:42:40'),
+(68, '25-2973', 'BAUTISTA, Chrizelle Andrei', 'VITS', 'BSIT 2-5', '9206689114', 'chrizelle.bautista@plv.edu.ph', '$2y$10$zzEPgGOpjwMAi07PN4tQ5eTFJUE3nZTd4qfcpDUUQeCUwX38m8Py2', '2025-11-11 07:42:40'),
+(69, '25-2777', 'PADILLA, Mary Fame', 'VITS', 'BSIT 2-3', '9172435509', 'mary.padilla@plv.edu.ph', '$2y$10$42YG30r2G0/D/xckyfvlSePxst9G5x8yhjDbYyYxotFoqe7wt14Im', '2025-11-11 07:42:40'),
+(70, '25-2779', 'WONG, Gabriel', 'VITS', 'BSIT 2-4', '9095537012', 'gabriel.wong@plv.edu.ph', '$2y$10$o6jaAlflKlRv2s06bywgaOlmFjmyl1AiJXfspO4MOueMouqC1Orw2', '2025-11-11 07:42:40'),
+(71, '24-3364', 'PEREZ, Ma Fe Camila Nazarene', 'VITS', 'BSIT 2-5', '9183374690', 'mafe.perez@plv.edu.ph', '$2y$10$wMIr53dbVW4p5InqadObouicA0MjE8YypyXhxd4gQafScTom07I.m', '2025-11-11 07:42:40');
 
 -- --------------------------------------------------------
 
@@ -324,15 +278,17 @@ CREATE TABLE `student_seller_affiliations` (
 --
 
 INSERT INTO `student_seller_affiliations` (`id`, `student_id`, `seller_id`, `created_at`) VALUES
-(7, 7, 4, '2025-10-17 02:14:44'),
-(8, 8, 4, '2025-10-17 02:14:44'),
-(9, 9, 4, '2025-10-17 02:14:44'),
-(13, 13, 5, '2025-10-17 02:51:03'),
-(14, 14, 5, '2025-10-17 02:51:03'),
-(15, 15, 5, '2025-10-17 02:51:04'),
-(16, 16, 3, '2025-10-17 02:53:26'),
-(17, 17, 3, '2025-10-17 02:53:26'),
-(18, 18, 3, '2025-10-17 02:53:26');
+(35, 35, 11, '2025-11-11 06:43:06'),
+(62, 62, 9, '2025-11-11 07:42:39'),
+(63, 63, 9, '2025-11-11 07:42:39'),
+(64, 64, 9, '2025-11-11 07:42:40'),
+(65, 65, 9, '2025-11-11 07:42:40'),
+(66, 66, 9, '2025-11-11 07:42:40'),
+(67, 67, 9, '2025-11-11 07:42:40'),
+(68, 68, 9, '2025-11-11 07:42:40'),
+(69, 69, 9, '2025-11-11 07:42:40'),
+(70, 70, 9, '2025-11-11 07:42:40'),
+(71, 71, 9, '2025-11-11 07:42:40');
 
 -- --------------------------------------------------------
 
@@ -430,49 +386,49 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `admin_notifications`
 --
 ALTER TABLE `admin_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=105;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 
 --
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
 
 --
 -- AUTO_INCREMENT for table `sellers`
 --
 ALTER TABLE `sellers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `seller_notifications`
 --
 ALTER TABLE `seller_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=163;
 
 --
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
 
 --
 -- AUTO_INCREMENT for table `student_seller_affiliations`
 --
 ALTER TABLE `student_seller_affiliations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
 
 --
 -- AUTO_INCREMENT for table `users`

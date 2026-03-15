@@ -15,9 +15,139 @@ if (!isset($_SESSION['student_id'])) {
 
 $student_id = $_SESSION['student_id'];
 
+// Handle cancel order request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'cancel_order') {
+    $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+    $cancellation_reason = isset($_POST['cancellation_reason']) ? trim($_POST['cancellation_reason']) : '';
+    
+    if ($order_id > 0 && !empty($cancellation_reason)) {
+        try {
+            // Verify the order belongs to this student and get order details
+            $checkStmt = $conn->prepare("SELECT o.id, o.status, o.product_id, o.quantity, p.seller_id, p.name as product_name, s.student_number, s.student_name FROM orders o JOIN products p ON o.product_id = p.id JOIN students s ON o.student_id = s.id WHERE o.id = ? AND o.user_id = ?");
+            $checkStmt->bind_param('ii', $order_id, $student_id);
+            $checkStmt->execute();
+            $result = $checkStmt->get_result();
+            
+            if ($result->num_rows > 0) {
+                $orderData = $result->fetch_assoc();
+                
+                // Only allow cancellation of pending orders
+                if ($orderData['status'] === 'pending') {
+                    // Start transaction
+                    $conn->begin_transaction();
+                    
+                    try {
+                        // Update order status
+                        $updateStmt = $conn->prepare("UPDATE orders SET status = 'cancelled', cancellation_reason = ? WHERE id = ?");
+                        $updateStmt->bind_param('si', $cancellation_reason, $order_id);
+                        
+                        if (!$updateStmt->execute()) {
+                            throw new Exception("Failed to cancel order");
+                        }
+                        
+                        // Restore stock for pre-orders
+                        $product_id = $orderData['product_id'];
+                        $quantity = $orderData['quantity'];
+                        
+                        $stockStmt = $conn->prepare("UPDATE products SET stock = stock + ? WHERE id = ?");
+                        $stockStmt->bind_param('ii', $quantity, $product_id);
+                        
+                        if (!$stockStmt->execute()) {
+                            throw new Exception("Failed to restore stock");
+                        }
+                        
+                        // Notify seller about order cancellation
+                        $seller_id = $orderData['seller_id'];
+                        $product_name = $orderData['product_name'];
+                        $student_number = $orderData['student_number'];
+                        $student_name = $orderData['student_name'];
+                        $notification_title = "Order Cancelled - Stock Restored";
+                        $notification_message = "Order Cancelled by {$student_name} ({$student_number})\nProduct: {$product_name}\nQuantity: {$quantity}\nReason: {$cancellation_reason}\n\nStock has been restored.";
+                        
+                        $notifStmt = $conn->prepare("INSERT INTO seller_notifications (seller_id, product_id, order_id, type, title, message, is_read, created_at) VALUES (?, ?, ?, 'cancelled', ?, ?, 0, NOW())");
+                        $notifStmt->bind_param('iisss', $seller_id, $product_id, $order_id, $notification_title, $notification_message);
+                        
+                        if (!$notifStmt->execute()) {
+                            throw new Exception("Failed to create seller notification");
+                        }
+                        
+                        // Commit transaction
+                        $conn->commit();
+                        
+                        $_SESSION['flash_message'] = "Order cancelled successfully. Stock has been restored and seller has been notified.";
+                        $_SESSION['flash_type'] = "success";
+                    } catch (Exception $e) {
+                        // Rollback on error
+                        $conn->rollback();
+                        $_SESSION['flash_message'] = "Error cancelling order: " . $e->getMessage();
+                        $_SESSION['flash_type'] = "error";
+                    }
+                } else {
+                    $_SESSION['flash_message'] = "Cannot cancel an order that is not pending.";
+                    $_SESSION['flash_type'] = "error";
+                }
+            } else {
+                $_SESSION['flash_message'] = "Order not found.";
+                $_SESSION['flash_type'] = "error";
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_message'] = "An error occurred: " . $e->getMessage();
+            $_SESSION['flash_type'] = "error";
+        }
+    }
+    
+    header('Location: myorders.php');
+    exit();
+}
+
+// Handle delete cancelled order request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_order') {
+    $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+    
+    if ($order_id > 0) {
+        try {
+            // Verify the order belongs to this student and is cancelled
+            $checkStmt = $conn->prepare("SELECT id, status FROM orders WHERE id = ? AND user_id = ?");
+            $checkStmt->bind_param('ii', $order_id, $student_id);
+            $checkStmt->execute();
+            $result = $checkStmt->get_result();
+            
+            if ($result->num_rows > 0) {
+                $orderData = $result->fetch_assoc();
+                
+                // Only allow deletion of cancelled orders
+                if ($orderData['status'] === 'cancelled') {
+                    $deleteStmt = $conn->prepare("DELETE FROM orders WHERE id = ?");
+                    $deleteStmt->bind_param('i', $order_id);
+                    
+                    if ($deleteStmt->execute()) {
+                        $_SESSION['flash_message'] = "Cancelled order deleted successfully.";
+                        $_SESSION['flash_type'] = "success";
+                    } else {
+                        $_SESSION['flash_message'] = "Failed to delete order.";
+                        $_SESSION['flash_type'] = "error";
+                    }
+                } else {
+                    $_SESSION['flash_message'] = "Can only delete cancelled orders.";
+                    $_SESSION['flash_type'] = "error";
+                }
+            } else {
+                $_SESSION['flash_message'] = "Order not found.";
+                $_SESSION['flash_type'] = "error";
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_message'] = "An error occurred: " . $e->getMessage();
+            $_SESSION['flash_type'] = "error";
+        }
+    }
+    
+    header('Location: myorders.php');
+    exit();
+}
+
 // Get all orders for the student
 $sql = "SELECT o.*, p.name as product_name, p.image_path, p.category,
-        s.seller_name as seller_name, o.reference_number, o.payment_method, o.payment_proof_path
+        s.seller_name as seller_name, s.organization as seller_organization, o.reference_number, o.payment_method, o.payment_proof_path
         FROM orders o
         JOIN products p ON o.product_id = p.id
         LEFT JOIN sellers s ON o.seller_id = s.id
@@ -205,6 +335,11 @@ unset($order); // Break the reference
             color: #0f5132;
         }
 
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         .total-price {
             font-size: 1.5rem;
             font-weight: 700;
@@ -258,6 +393,27 @@ unset($order); // Break the reference
 
         .download-receipt-btn:hover {
             background: #7c3aed;
+            transform: translateY(-2px);
+        }
+
+        .cancel-order-btn {
+            padding: 10px 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .cancel-order-btn:hover {
+            background: #dc2626;
             transform: translateY(-2px);
         }
 
@@ -341,6 +497,83 @@ unset($order); // Break the reference
 
         .close:hover {
             color: #000;
+        }
+
+        /* Reason Button Styles */
+        .reason-btn {
+            padding: 10px 12px;
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: center;
+            width: 100%;
+        }
+
+        .reason-btn:hover {
+            background: #e8e8e8;
+            border-color: #bbb;
+        }
+
+        .reason-btn-active {
+            background: #4CAF50;
+            color: white;
+            border-color: #45a049;
+            font-weight: 600;
+        }
+
+        .reason-btn-active:hover {
+            background: #45a049;
+            border-color: #3d8b40;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            resize: vertical;
+            font-size: 14px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .modal-content {
+                margin: 20% auto;
+                width: 95%;
+                padding: 20px;
+            }
+
+            .modal-header h2 {
+                font-size: 18px;
+            }
+
+            .reason-btn {
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+
+            /* Single column for mobile */
+            div[style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
         }
 
         .proof-image {
@@ -521,6 +754,10 @@ unset($order); // Break the reference
 
                             <div class="order-details">
                                 <div class="detail-item">
+                                    <span class="detail-label">Organization:</span>
+                                    <span><?php echo htmlspecialchars($order['seller_organization'] ?: 'N/A'); ?></span>
+                                </div>
+                                <div class="detail-item">
                                     <span class="detail-label">Seller:</span>
                                     <span><?php echo htmlspecialchars($order['seller_name'] ?: 'N/A'); ?></span>
                                 </div>
@@ -560,6 +797,18 @@ unset($order); // Break the reference
                                     </button>
                                     <button onclick="downloadReceipt(<?php echo htmlspecialchars(json_encode($order)); ?>)" class="download-receipt-btn">
                                         <i class="fas fa-download"></i> Download Receipt
+                                    </button>
+                                <?php endif; ?>
+                                
+                                <?php if (strtolower($order['status']) === 'pending'): ?>
+                                    <button onclick="openCancelModal(<?php echo htmlspecialchars(json_encode($order)); ?>)" class="cancel-order-btn">
+                                        <i class="fas fa-times"></i> Cancel Order
+                                    </button>
+                                <?php endif; ?>
+                                
+                                <?php if (strtolower($order['status']) === 'cancelled'): ?>
+                                    <button onclick="deleteOrder(<?php echo $order['id']; ?>)" class="delete-order-btn" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: all 0.3s;">
+                                        <i class="fas fa-trash-alt"></i> Delete
                                     </button>
                                 <?php endif; ?>
                             </div>
@@ -609,6 +858,71 @@ unset($order); // Break the reference
                     <i class="fas fa-download"></i> Download as Image
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Cancel Order Modal -->
+    <div id="cancelModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Cancel Order</h2>
+                <button class="close" onclick="closeCancelModal()">&times;</button>
+            </div>
+            <form method="POST" id="cancelForm">
+                <input type="hidden" name="action" value="cancel_order">
+                <input type="hidden" name="order_id" id="cancelOrderId">
+                
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label class="form-label">Select Reason(s) (or type custom reason below)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                            <button type="button" class="reason-btn" data-reason="Changed my mind">
+                                Changed my mind
+                            </button>
+                            <button type="button" class="reason-btn" data-reason="Found a better price elsewhere">
+                                Better Price
+                            </button>
+                            <button type="button" class="reason-btn" data-reason="Product out of stock">
+                                Out of Stock
+                            </button>
+                            <button type="button" class="reason-btn" data-reason="Duplicate order">
+                                Duplicate Order
+                            </button>
+                            <button type="button" class="reason-btn" data-reason="Product quality concerns">
+                                Quality Issues
+                            </button>
+                            <button type="button" class="reason-btn" data-reason="Other">
+                                Others
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cancellation_reason" class="form-label">
+                            Cancellation Reason <span style="color: red;">*</span>
+                        </label>
+                        <textarea 
+                            id="cancellation_reason" 
+                            name="cancellation_reason" 
+                            class="form-textarea" 
+                            placeholder="Selected reasons will appear here. You can edit or add custom text..."
+                            style="min-height: 120px; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical;"
+                        ></textarea>
+                        <small style="color: #666; margin-top: 8px; display: block;">
+                            Click reason buttons to add them (multiple selections allowed). Edit the text as needed.
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="modal-actions" style="gap: 10px; padding: 0 20px 20px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeCancelModal()" style="background: #999; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                        Keep Order
+                    </button>
+                    <button type="submit" style="background: #ef4444; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                        Confirm Cancellation
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -809,11 +1123,97 @@ unset($order); // Break the reference
         window.onclick = function(event) {
             const proofModal = document.getElementById('proofModal');
             const receiptModal = document.getElementById('receiptModal');
+            const cancelModal = document.getElementById('cancelModal');
             if (event.target == proofModal) {
                 closeProofModal();
             }
             if (event.target == receiptModal) {
                 closeReceiptModal();
+            }
+            if (event.target == cancelModal) {
+                closeCancelModal();
+            }
+        }
+
+        // Cancel Order Functions - Multiple Selection with Button Highlighting
+        const selectedReasons = new Set();
+
+        function openCancelModal(order) {
+            document.getElementById('cancelOrderId').value = order.id;
+            document.getElementById('cancelModal').style.display = 'block';
+            
+            // Reset form
+            document.getElementById('cancelForm').reset();
+            document.getElementById('cancellation_reason').value = '';
+            selectedReasons.clear();
+            
+            // Reset all reason buttons
+            document.querySelectorAll('.reason-btn').forEach(btn => {
+                btn.classList.remove('reason-btn-active');
+            });
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancelModal').style.display = 'none';
+        }
+
+        // Reason button selection handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const reasonButtons = document.querySelectorAll('.reason-btn');
+            const cancellationReasonInput = document.getElementById('cancellation_reason');
+            const cancelForm = document.getElementById('cancelForm');
+            
+            // Setup reason button clicks
+            reasonButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const reason = this.dataset.reason;
+                    
+                    // Toggle selection
+                    if (selectedReasons.has(reason)) {
+                        selectedReasons.delete(reason);
+                        this.classList.remove('reason-btn-active');
+                    } else {
+                        selectedReasons.add(reason);
+                        this.classList.add('reason-btn-active');
+                    }
+                    
+                    // Update textarea with selected reasons
+                    if (selectedReasons.size > 0) {
+                        cancellationReasonInput.value = Array.from(selectedReasons)
+                            .map(r => '• ' + r)
+                            .join('\n');
+                    } else {
+                        cancellationReasonInput.value = '';
+                    }
+                });
+            });
+            
+            // Handle form submission
+            if (cancelForm) {
+                cancelForm.addEventListener('submit', function(e) {
+                    const reasonText = cancellationReasonInput.value.trim();
+                    if (!reasonText) {
+                        e.preventDefault();
+                        alert('Please select at least one cancellation reason or provide your own.');
+                        return false;
+                    }
+                    // Allow form to submit naturally
+                });
+            }
+        });
+
+        // Delete cancelled order function
+        function deleteOrder(orderId) {
+            if (confirm('Are you sure you want to delete this cancelled order? This action cannot be undone.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="delete_order">
+                    <input type="hidden" name="order_id" value="${orderId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
         }
     </script>

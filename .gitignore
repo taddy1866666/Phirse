@@ -1,0 +1,22 @@
+# Environment
+.env
+
+# Uploads (user-generated content)
+uploads/products/*
+uploads/product_pdfs/*
+uploads/payment_proofs/*
+uploads/logos/*
+uploads/gcash/*
+!uploads/**/.gitkeep
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Backups
+*.backup
