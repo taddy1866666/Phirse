@@ -2,8 +2,3 @@ RewriteEngine On
 
 # Default to index.html
 DirectoryIndex index.html index.php
-
-# Handle uploaded files
-<Directory "uploads">
-    Options -Indexes
-</Directory>

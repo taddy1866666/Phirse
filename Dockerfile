@@ -12,8 +12,9 @@ RUN a2enmod rewrite
 # Set Apache document root
 ENV APACHE_DOCUMENT_ROOT /var/www/html
 
-# Allow .htaccess overrides
-RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+# Allow .htaccess overrides and disable directory listing for uploads
+RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
+    && echo '<Directory /var/www/html/uploads>\n    Options -Indexes\n</Directory>' >> /etc/apache2/apache2.conf
 
 # Copy project files
 COPY . /var/www/html/
