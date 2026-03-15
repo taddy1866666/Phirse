@@ -34,7 +34,7 @@ try {
                                 created_at as timestamp, NULL as organization, NULL as seller_name,
                                 title, message as custom_message
                          FROM admin_notifications
-                         WHERE type = 'stock_update' AND is_read = 0
+                         WHERE (type = 'stock_update' OR type = 'product_deleted') AND is_read = 0
                          ORDER BY timestamp DESC
                          LIMIT 10");
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -49,7 +49,12 @@ try {
         } else {
             $title = $r['title'];
             $message = $r['custom_message'];
-            $icon = 'fa-box';
+            // Set icon based on notification type from title
+            if (strpos($title, 'Product Deleted') !== false) {
+                $icon = 'fa-trash-alt';
+            } else {
+                $icon = 'fa-box';
+            }
         }
 
         $items[] = [
@@ -64,7 +69,7 @@ try {
     // Count total unread notifications
     $countStmt = $pdo->query("SELECT 
         (SELECT COUNT(*) FROM products WHERE status = 'pending' OR status IS NULL) +
-        (SELECT COUNT(*) FROM admin_notifications WHERE type = 'stock_update' AND is_read = 0) as total");
+        (SELECT COUNT(*) FROM admin_notifications WHERE (type = 'stock_update' OR type = 'product_deleted') AND is_read = 0) as total");
     $unread = (int)($countStmt->fetchColumn() ?: 0);
 
     echo json_encode([

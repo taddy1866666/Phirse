@@ -47,6 +47,7 @@ try {
         if ($n['type'] === 'rejected') $icon = 'fa-times-circle';
         if ($n['type'] === 'order') $icon = 'fa-shopping-cart';
         if ($n['type'] === 'payment') $icon = 'fa-money-bill-wave';
+        if ($n['type'] === 'cancelled') $icon = 'fa-trash-alt';
         $items[] = [
             'id' => (int)$n['id'],
             'title' => htmlspecialchars($n['title'], ENT_QUOTES, 'UTF-8'),

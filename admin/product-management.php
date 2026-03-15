@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'approve') {
                 // Get product and seller info
-                $productStmt = $pdo->prepare("SELECT p.name, p.seller_id FROM products p WHERE p.id = ?");
+                $productStmt = $pdo->prepare("SELECT p.name, p.category, p.seller_id FROM products p WHERE p.id = ?");
                 $productStmt->execute([$product_id]);
                 $productInfo = $productStmt->fetch();
 
@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Create notification for seller
                 if ($productInfo) {
+                    $notif_message = 'Category: ' . $productInfo['category'] . "\nProduct: " . $productInfo['name'] . "\nStatus: Your product has been approved by admin and is now live!";
                     $notifStmt = $pdo->prepare("
                         INSERT INTO seller_notifications (seller_id, product_id, type, title, message)
                         VALUES (?, ?, 'approved', ?, ?)
@@ -37,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $notifStmt->execute([
                         $productInfo['seller_id'],
                         $product_id,
-                        'Product Approved',
-                        'Your product "' . $productInfo['name'] . '" has been approved by admin and is now live!'
+                        'Product Approved: ' . $productInfo['name'],
+                        $notif_message
                     ]);
                 }
 
@@ -46,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $rejection_reason = $_POST['rejection_reason'] ?? '';
 
                 // Get product and seller info
-                $productStmt = $pdo->prepare("SELECT p.name, p.seller_id FROM products p WHERE p.id = ?");
+                $productStmt = $pdo->prepare("SELECT p.name, p.category, p.seller_id FROM products p WHERE p.id = ?");
                 $productStmt->execute([$product_id]);
                 $productInfo = $productStmt->fetch();
 
@@ -56,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Create notification for seller
                 if ($productInfo) {
+                    $notif_message = 'Category: ' . $productInfo['category'] . "\nProduct: " . $productInfo['name'] . "\nReason: " . $rejection_reason;
                     $notifStmt = $pdo->prepare("
                         INSERT INTO seller_notifications (seller_id, product_id, type, title, message)
                         VALUES (?, ?, 'rejected', ?, ?)
@@ -63,18 +65,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $notifStmt->execute([
                         $productInfo['seller_id'],
                         $product_id,
-                        'Product Rejected',
-                        'Your product "' . $productInfo['name'] . '" has been rejected. Reason: ' . $rejection_reason
+                        'Product Rejected: ' . $productInfo['name'],
+                        $notif_message
                     ]);
                 }
 
             } elseif ($action === 'delete') {
+                // Get product and seller info before deleting
+                $productStmt = $pdo->prepare("SELECT p.name, p.category, p.seller_id FROM products p WHERE p.id = ?");
+                $productStmt->execute([$product_id]);
+                $productInfo = $productStmt->fetch();
+
                 $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
                 $stmt->execute([$product_id]);
                 $message = "Product deleted successfully";
+
+                // Create notification for seller
+                if ($productInfo) {
+                    $notif_message = 'Category: ' . $productInfo['category'] . "\nProduct: " . $productInfo['name'] . "\nStatus: Your product has been deleted by admin.";
+                    $notifStmt = $pdo->prepare("
+                        INSERT INTO seller_notifications (seller_id, product_id, type, title, message)
+                        VALUES (?, ?, 'deleted', ?, ?)
+                    ");
+                    $notifStmt->execute([
+                        $productInfo['seller_id'],
+                        $product_id,
+                        'Product Deleted: ' . $productInfo['name'],
+                        $notif_message
+                    ]);
+                }
             }
         } catch(PDOException $e) {
             $error = "Error updating product: " . $e->getMessage();
+        }
+    }
+    
+    // Handle bulk delete
+    if (isset($_POST['delete_multiple'])) {
+        try {
+            $ids = json_decode($_POST['delete_multiple'], true);
+            
+            if (!is_array($ids) || empty($ids)) {
+                throw new Exception("Invalid selection");
+            }
+            
+            // Validate all IDs are numeric
+            foreach ($ids as $id) {
+                if (!is_numeric($id)) {
+                    throw new Exception("Invalid product ID");
+                }
+            }
+            
+            // Get product info before deleting for notifications
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $getProductsStmt = $pdo->prepare("SELECT id, name, category, seller_id FROM products WHERE id IN ($placeholders)");
+            $getProductsStmt->execute($ids);
+            $productsToDelete = $getProductsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Delete all selected products
+            $stmt = $pdo->prepare("DELETE FROM products WHERE id IN ($placeholders)");
+            $stmt->execute($ids);
+            
+            // Create notifications for each deleted product
+            foreach ($productsToDelete as $product) {
+                $notif_message = 'Category: ' . $product['category'] . "\nProduct: " . $product['name'] . "\nStatus: Your product has been deleted by admin.";
+                $notifStmt = $pdo->prepare("
+                    INSERT INTO seller_notifications (seller_id, product_id, type, title, message)
+                    VALUES (?, ?, 'deleted', ?, ?)
+                ");
+                $notifStmt->execute([
+                    $product['seller_id'],
+                    $product['id'],
+                    'Product Deleted: ' . $product['name'],
+                    $notif_message
+                ]);
+            }
+            
+            $message = "Successfully deleted " . count($ids) . " product(s)!";
+        } catch(Exception $e) {
+            $error = "Error deleting products: " . $e->getMessage();
         }
     }
 }
@@ -611,6 +680,60 @@ try {
             overflow: hidden;
             margin-top: 24px;
         }
+        
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .select-all-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #475569;
+            user-select: none;
+        }
+        
+        .select-all-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .delete-selected-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            margin-left: auto;
+        }
+        
+        .delete-selected-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        
+        .product-checkbox {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
 
         .products-table {
             width: 100%;
@@ -619,20 +742,21 @@ try {
         
         .products-table th {
             background-color: #f8f9fa;
-            padding: 20px;
+            padding: 12px 8px;
             text-align: left;
             font-weight: 600;
             color: #1a202c;
             border-bottom: 2px solid #e2e8f0;
-            font-size: 14px;
+            font-size: 12px;
+            white-space: nowrap;
         }
         
         .products-table td {
-            padding: 20px;
+            padding: 12px 8px;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
             color: #4a5568;
-            font-size: 14px;
+            font-size: 13px;
             vertical-align: middle;
         }        .products-table tr:hover {
             background-color: #f8fafc;
@@ -640,10 +764,10 @@ try {
         }
         
         .product-image {
-            width: 64px;
-            height: 64px;
+            width: 50px;
+            height: 50px;
             object-fit: cover;
-            border-radius: 10px;
+            border-radius: 8px;
             border: 2px solid #e2e8f0;
             transition: transform 0.2s ease;
         }
@@ -651,6 +775,34 @@ try {
         .product-image:hover {
             transform: scale(1.05);
             border-color: #4f46e5;
+        }
+        
+        .pdf-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: #fff5f5;
+            color: #dc3545;
+            text-decoration: none;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .pdf-link:hover {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #c82333;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+        }
+        
+        .pdf-link i {
+            font-size: 14px;
         }
         
         .price {
@@ -669,15 +821,16 @@ try {
         }
         
         .action-btn {
-            padding: 6px 12px;
+            padding: 5px 8px;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             transition: background-color 0.3s;
             text-decoration: none;
             display: inline-block;
+            white-space: nowrap;
         }
         
         .approve-btn {
@@ -787,12 +940,16 @@ try {
         
         .modal-content {
             background-color: white;
-            margin: 15% auto;
+            margin: 5% auto;
             padding: 20px;
             border-radius: 8px;
             width: 90%;
             max-width: 500px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
         
         .modal-header {
@@ -852,6 +1009,9 @@ try {
             display: flex;
             gap: 10px;
             justify-content: flex-end;
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
         }
         
         .btn {
@@ -880,6 +1040,38 @@ try {
         
         .btn-danger:hover {
             background-color: #c82333;
+        }
+
+        .reason-btn {
+            padding: 8px 10px;
+            background-color: #f8f9fa;
+            color: #495057;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-align: center;
+            white-space: normal;
+            line-height: 1.4;
+        }
+
+        .reason-btn:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+            color: #212529;
+        }
+
+        .reason-btn.selected {
+            background-color: #dc3545;
+            color: white;
+            border-color: #c82333;
+        }
+
+        .reason-btn.selected:hover {
+            background-color: #c82333;
+            border-color: #a81f2e;
         }
 
         /* Image Viewer Modal */
@@ -1170,9 +1362,19 @@ try {
                     ?>
                 </div>
             <?php else: ?>
+                <div class="bulk-actions">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                        <span>Select All</span>
+                    </label>
+                    <button class="delete-selected-btn" onclick="deleteSelected()" id="deleteSelectedBtn" style="display: none;">
+                        <i class="fas fa-trash"></i> Delete Selected
+                    </button>
+                </div>
                 <table class="products-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"></th>
                             <th>Organization</th>
                             <th>Product</th>
                             <th>Category</th>
@@ -1180,6 +1382,7 @@ try {
                             <th>Stock</th>
                             <th>Sizes</th>
                             <th>Images</th>
+                            <th>PDF</th>
                             <th>Status</th>
                             <th>Date Added</th>
                             <th>Actions</th>
@@ -1187,7 +1390,10 @@ try {
                     </thead>
                     <tbody>
                         <?php foreach ($products as $product): ?>
-                            <tr>
+                            <tr class="product-row" data-product-id="<?php echo $product['id']; ?>">
+                                <td style="text-align: center;">
+                                    <input type="checkbox" class="product-checkbox" value="<?php echo $product['id']; ?>" onchange="updateSelectAllState()">
+                                </td>
                                 <td><?php echo htmlspecialchars($product['organization'] ?? 'Unknown'); ?></td>
                                 <td><?php echo htmlspecialchars($product['name']); ?></td>
                                 <td><?php echo htmlspecialchars($product['category']); ?></td>
@@ -1233,6 +1439,17 @@ try {
                                     <?php endif; ?>
                                 </td>
                                 <td>
+                                    <?php if (!empty($product['pdf_path']) && file_exists($product['pdf_path'])): ?>
+                                        <a href="download-pdf.php?product_id=<?php echo $product['id']; ?>&token=<?php echo urlencode(base64_encode($product['id'] . '|' . time())); ?>" 
+                                           class="pdf-link" 
+                                           title="Download PDF">
+                                            <i class="fas fa-file-pdf" style="color: #dc3545;"></i> PDF
+                                        </a>
+                                    <?php else: ?>
+                                        <span style="color: #999;">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
                                     <?php if ($product['status'] === 'pending'): ?>
                                         <span class="status-badge pending">
                                             <i class="fas fa-clock"></i> In Progress
@@ -1249,35 +1466,22 @@ try {
                                 </td>
                                 <td><?php echo date('M d, Y', strtotime($product['created_at'])); ?></td>
                                 <td>
-                                    <?php if ($product['status'] === 'pending'): ?>
-                                        <div class="actions">
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <?php if ($product['status'] === 'pending'): ?>
                                             <form method="POST" style="display: inline;">
                                                 <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
                                                 <input type="hidden" name="action" value="approve">
-                                                <button type="submit" class="action-btn approve-btn" 
-                                                        onclick="return confirm('Approve this product?')">
+                                                <button type="submit" class="action-btn approve-btn" title="Approve" onclick="return confirm('Approve this product?')">
                                                     <i class="fas fa-check"></i> Approve
                                                 </button>
                                             </form>
-                                            <button type="button" class="action-btn reject-btn" 
-                                                    onclick="openRejectModal(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>')">
+                                            <button type="button" class="action-btn reject-btn" title="Reject" onclick="openRejectModal(<?php echo $product['id']; ?>, '<?php echo htmlspecialchars($product['name']); ?>')">
                                                 <i class="fas fa-times"></i> Reject
                                             </button>
-                                        </div>
-                                    <?php elseif ($product['status'] === 'approved'): ?>
-                                        <div class="actions">
-                                            <form method="POST" style="display: inline;">
-                                                <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
-                                                <input type="hidden" name="action" value="delete">
-                                                <button type="submit" class="action-btn delete-btn" 
-                                                        onclick="return confirm('Are you sure you want to delete this product? This action cannot be undone.')">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
-                                            </form>
-                                        </div>
-                                    <?php else: ?>
-                                        <span class="no-actions">—</span>
-                                    <?php endif; ?>
+                                        <?php else: ?>
+                                            <span style="color: #999; font-size: 12px;">No actions</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -1309,16 +1513,50 @@ try {
                 <input type="hidden" name="action" value="reject">
                 
                 <div class="form-group">
+                    <label class="form-label">Select Reason(s) (or type custom reason below)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <button type="button" class="reason-btn" data-reason="Poor image quality or unclear product details">
+                            Poor Image Quality
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Incomplete product information or description">
+                            Incomplete Information
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Inappropriate product content or description">
+                            Inappropriate Content
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Price seems unreasonable or inconsistent">
+                            Unreasonable Price
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Product does not meet organizational standards">
+                            Non-Standard Product
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Duplicate product listing">
+                            Duplicate Listing
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Product specification is not clear">
+                            Unclear Specifications
+                        </button>
+                        <button type="button" class="reason-btn" data-reason="Other">
+                            Others
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
                     <label for="rejection_reason" class="form-label">
-                        Reason for Rejection <span style="color: red;">*</span>
+                        Rejection Reason <span style="color: red;">*</span>
                     </label>
                     <textarea 
                         id="rejection_reason" 
                         name="rejection_reason" 
                         class="form-textarea" 
-                        placeholder="Please provide a reason for rejecting this product..."
+                        placeholder="Selected reasons will appear here. You can edit or add custom text..."
                         required
+                        style="min-height: 120px;"
                     ></textarea>
+                    <small style="color: #666; margin-top: 8px; display: block;">
+                        Click reason buttons to add them (multiple selections allowed). Edit the text as needed.
+                    </small>
                 </div>
                 
                 <div class="modal-actions">
@@ -1424,19 +1662,55 @@ try {
         function openRejectModal(productId, productName) {
             document.getElementById('rejectProductId').value = productId;
             document.getElementById('rejection_reason').value = '';
+            
+            // Reset all reason button selections
+            document.querySelectorAll('.reason-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
             document.getElementById('rejectModal').style.display = 'block';
         }
         
         function closeRejectModal() {
             document.getElementById('rejectModal').style.display = 'none';
         }
+
+        // Handle reason button clicks
+        document.querySelectorAll('.reason-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const reason = this.getAttribute('data-reason');
+                const reasonTextarea = document.getElementById('rejection_reason');
+                const currentText = reasonTextarea.value.trim();
+                
+                // Toggle selection
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    
+                    // Remove this reason from textarea
+                    const reasons = currentText.split('\n• ').filter(r => r.trim());
+                    const updatedReasons = reasons.filter(r => r !== reason);
+                    reasonTextarea.value = updatedReasons.length > 0 ? '• ' + updatedReasons.join('\n• ') : '';
+                } else {
+                    // Add selection to clicked button
+                    this.classList.add('selected');
+                    
+                    // Add this reason to textarea
+                    if (currentText === '') {
+                        reasonTextarea.value = '• ' + reason;
+                    } else {
+                        reasonTextarea.value = currentText + '\n• ' + reason;
+                    }
+                }
+            });
+        });
         
         // Handle form submission
         document.getElementById('rejectForm').addEventListener('submit', function(e) {
             const reason = document.getElementById('rejection_reason').value.trim();
             if (!reason) {
                 e.preventDefault();
-                alert('Please provide a reason for rejection.');
+                alert('Please select or provide a reason for rejection.');
                 return;
             }
 
@@ -1444,6 +1718,62 @@ try {
                 e.preventDefault();
             }
         });
+        
+        // Bulk delete functions
+        function toggleSelectAll(checkbox) {
+            const allCheckboxes = document.querySelectorAll('.product-checkbox');
+            allCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateDeleteButtonState();
+        }
+        
+        function updateSelectAllState() {
+            const allCheckboxes = document.querySelectorAll('.product-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const checkedCount = document.querySelectorAll('.product-checkbox:checked').length;
+            
+            selectAllCheckbox.checked = checkedCount === allCheckboxes.length && allCheckboxes.length > 0;
+            updateDeleteButtonState();
+        }
+        
+        function updateDeleteButtonState() {
+            const checkedCheckboxes = document.querySelectorAll('.product-checkbox:checked');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            
+            if (checkedCheckboxes.length > 0) {
+                deleteBtn.style.display = 'flex';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+        }
+        
+        function deleteSelected() {
+            const checkedCheckboxes = document.querySelectorAll('.product-checkbox:checked');
+            if (checkedCheckboxes.length === 0) {
+                alert('Please select at least one product to delete.');
+                return;
+            }
+            
+            const selectedIds = Array.from(checkedCheckboxes).map(cb => cb.value);
+            const count = selectedIds.length;
+            
+            if (confirm(`Are you sure you want to delete ${count} product(s)? This action cannot be undone.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'product-management.php';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_multiple';
+                input.value = JSON.stringify(selectedIds);
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
 
     </script>
 </body>

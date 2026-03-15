@@ -94,6 +94,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
     $error_count = 0;
     $errors = [];
     $row_number = 1; // Start from 1 (after header)
+
+    // Track duplicates inside the CSV file
+    $seen_student_numbers = [];
+    $seen_contact_numbers = [];
     
     try {
         $pdo->beginTransaction();
@@ -133,14 +137,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
                 continue;
             }
             
-            // Check if student number already exists
-            $check_stmt = $pdo->prepare("SELECT id FROM students WHERE student_number = ?");
-            $check_stmt->execute([$student_number]);
-            
-            if ($check_stmt->fetch()) {
+            // Check for duplicates inside uploaded CSV
+            if (isset($seen_student_numbers[$student_number])) {
                 $error_count++;
-                $errors[] = "Row $row_number: Student number '$student_number' already exists";
+                $errors[] = "Row $row_number: Duplicate student number in file '$student_number' (also on row {$seen_student_numbers[$student_number]})";
                 continue;
+            }
+            $seen_student_numbers[$student_number] = $row_number;
+
+            if (!empty($contact_number)) {
+                if (isset($seen_contact_numbers[$contact_number])) {
+                    $error_count++;
+                    $errors[] = "Row $row_number: Duplicate contact number in file '$contact_number' (also on row {$seen_contact_numbers[$contact_number]})";
+                    continue;
+                }
+                $seen_contact_numbers[$contact_number] = $row_number;
+            }
+
+            // Check if student number already exists in DB
+            $check_stmt = $pdo->prepare("SELECT id, contact_number FROM students WHERE student_number = ?");
+            $check_stmt->execute([$student_number]);
+            $existing_student = $check_stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing_student) {
+                // Student number exists -> create affiliation if not exists, but do NOT create duplicate student
+                $existing_id = $existing_student['id'];
+
+                // If contact number provided in CSV, ensure it doesn't conflict with another student
+                if (!empty($contact_number)) {
+                    $contact_check = $pdo->prepare("SELECT id FROM students WHERE contact_number = ? AND id != ?");
+                    $contact_check->execute([$contact_number, $existing_id]);
+                    if ($contact_check->fetch()) {
+                        $error_count++;
+                        $errors[] = "Row $row_number: Contact number '$contact_number' already used by another student";
+                        continue;
+                    }
+                }
+
+                // Check affiliation
+                $aff_check = $pdo->prepare("SELECT id FROM student_seller_affiliations WHERE student_id = ? AND seller_id = ?");
+                $aff_check->execute([$existing_id, $seller_id]);
+
+                if ($aff_check->fetch()) {
+                    // already affiliated -> skip with warning
+                    $error_count++;
+                    $errors[] = "Row $row_number: Student number '$student_number' already exists and is already registered with your organization";
+                    continue;
+                }
+
+                // Create affiliation
+                $affiliation_stmt = $pdo->prepare(
+                    "INSERT INTO student_seller_affiliations (student_id, seller_id) VALUES (?, ?)"
+                );
+                $affiliation_stmt->execute([$existing_id, $seller_id]);
+                $success_count++;
+                continue;
+            }
+
+            // If contact number provided, ensure it's not already used by any other student
+            if (!empty($contact_number)) {
+                $contact_check = $pdo->prepare("SELECT id FROM students WHERE contact_number = ?");
+                $contact_check->execute([$contact_number]);
+                if ($contact_check->fetch()) {
+                    $error_count++;
+                    $errors[] = "Row $row_number: Contact number '$contact_number' already exists";
+                    continue;
+                }
             }
             
             // Hash password

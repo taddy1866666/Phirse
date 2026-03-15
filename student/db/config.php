@@ -1,13 +1,14 @@
 <?php
 // Database configuration for Student Portal
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "phirse_db";
+$servername = getenv('MYSQLHOST')     ?: 'localhost';
+$username   = getenv('MYSQLUSER')     ?: 'root';
+$password   = getenv('MYSQLPASSWORD') ?: '';
+$dbname     = getenv('MYSQLDATABASE') ?: 'phirse_db';
+$port       = (int)(getenv('MYSQLPORT') ?: 3306);
 
 try {
     // Create connection using mysqli
-    $conn = new mysqli($servername, $username, $password, $dbname);
+    $conn = new mysqli($servername, $username, $password, $dbname, $port);
     
     // Check connection
     if ($conn->connect_error) {

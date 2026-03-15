@@ -102,6 +102,114 @@ displayFlashMessage();
             letter-spacing: 2px;
         }
 
+        /* Search & Sort Panel */
+        .search-sort-panel {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2.5rem;
+        }
+
+        .search-sort-form {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            gap: 0.5rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #333;
+            box-shadow: 0 0 0 3px rgba(51, 51, 51, 0.1);
+        }
+
+        .search-btn {
+            padding: 0.75rem 1.25rem;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 45px;
+        }
+
+        .search-btn:hover {
+            background: #555;
+        }
+
+        .sort-box {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .sort-box label {
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .sort-select {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+            background: white;
+            font-family: inherit;
+            min-width: 150px;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #333;
+            box-shadow: 0 0 0 3px rgba(51, 51, 51, 0.1);
+        }
+
+        .clear-search-btn {
+            padding: 0.75rem 1.5rem;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .clear-search-btn:hover {
+            background: #e0e0e0;
+            border-color: #999;
+            text-decoration: none;
+            color: #333;
+        }
 
         /* Organizations Grid */
         .organizations-grid {
@@ -260,6 +368,7 @@ displayFlashMessage();
             display: flex;
             gap: 0.5rem;
             align-items: center;
+            justify-content: center;
         }
 
         .pagination a,
@@ -345,6 +454,15 @@ displayFlashMessage();
                 grid-template-columns: repeat(3, 1fr);
                 gap: 1.5rem;
             }
+
+            .sort-box {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .sort-select {
+                min-width: 120px;
+            }
         }
 
         @media (max-width: 768px) {
@@ -361,6 +479,28 @@ displayFlashMessage();
                 margin-bottom: 2rem;
             }
 
+            .search-sort-form {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+
+            .sort-box {
+                width: 100%;
+            }
+
+            .sort-select {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .clear-search-btn {
+                width: 100%;
+                text-align: center;
+            }
 
             .organizations-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -402,6 +542,50 @@ displayFlashMessage();
                 margin-bottom: 1.5rem;
             }
 
+            .search-sort-panel {
+                padding: 1.5rem 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .search-sort-form {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+
+            .search-input {
+                padding: 0.65rem 0.75rem;
+                font-size: 0.95rem;
+            }
+
+            .search-btn {
+                padding: 0.65rem 1rem;
+            }
+
+            .sort-box {
+                width: 100%;
+            }
+
+            .sort-box label {
+                font-size: 0.9rem;
+            }
+
+            .sort-select {
+                width: 100%;
+                min-width: unset;
+                padding: 0.65rem 0.75rem;
+                font-size: 0.9rem;
+            }
+
+            .clear-search-btn {
+                width: 100%;
+                text-align: center;
+                padding: 0.65rem 1rem;
+                font-size: 0.9rem;
+            }
 
             .organizations-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -448,6 +632,22 @@ displayFlashMessage();
 
             .join-date {
                 font-size: 0.7rem;
+            }
+
+            .pagination {
+                gap: 0.25rem;
+            }
+
+            .pagination a,
+            .pagination span {
+                width: 35px;
+                height: 35px;
+                font-size: 0.85rem;
+            }
+
+            .pagination-info {
+                font-size: 0.85rem;
+                padding: 0 0.5rem;
             }
         }
 
@@ -510,6 +710,37 @@ displayFlashMessage();
     <div class="organizations-container">
         <div class="page-header">
             <h1 class="page-title">All Student Organizations</h1>
+        </div>
+
+        <!-- Search & Sort Panel -->
+        <div class="search-sort-panel">
+            <form method="GET" class="search-sort-form">
+                <div class="search-box">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        placeholder="Search organizations..." 
+                        value="<?= htmlspecialchars($search) ?>"
+                        class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+
+                <div class="sort-box">
+                    <label for="sort_by">Sort by:</label>
+                    <select name="sort_by" id="sort_by" class="sort-select" onchange="this.form.submit()">
+                        <option value="name_asc" <?= $sort_by === 'name_asc' ? 'selected' : '' ?>>Name (A-Z)</option>
+                        <option value="name_desc" <?= $sort_by === 'name_desc' ? 'selected' : '' ?>>Name (Z-A)</option>
+                        <option value="date_new" <?= $sort_by === 'date_new' ? 'selected' : '' ?>>Newest First</option>
+                        <option value="date_old" <?= $sort_by === 'date_old' ? 'selected' : '' ?>>Oldest First</option>
+                    </select>
+                </div>
+
+                <?php if (!empty($search)): ?>
+                    <a href="organizations.php" class="clear-search-btn">Clear Search</a>
+                <?php endif; ?>
+            </form>
         </div>
 
 
@@ -576,13 +807,74 @@ displayFlashMessage();
                 <?php endforeach; ?>
             </div>
 
-            <!-- Pagination (unchanged) -->
+            <!-- Pagination -->
             <?php if ($total_pages > 1): ?>
-                <!-- same pagination code -->
+                <div class="pagination-container">
+                    <div style="width: 100%;">
+                        <div class="pagination-info">
+                            Showing <?= ($offset + 1) ?> - <?= min($offset + $per_page, $total_organizations) ?> of <?= $total_organizations ?> organizations
+                        </div>
+                        
+                        <div class="pagination">
+                            <?php if ($page > 1): ?>
+                                <a href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= $sort_by !== 'name_asc' ? '&sort_by=' . urlencode($sort_by) : '' ?>" title="First Page">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            <?php else: ?>
+                                <span style="color: #ccc; cursor: not-allowed;"><i class="fas fa-chevron-left"></i></span>
+                            <?php endif; ?>
+
+                            <?php 
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            if ($start_page > 1): ?>
+                                <a href="?page=1<?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= $sort_by !== 'name_asc' ? '&sort_by=' . urlencode($sort_by) : '' ?>">1</a>
+                                <?php if ($start_page > 2): ?>
+                                    <span style="padding: 0 0.25rem; color: #999;">...</span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+
+                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                <?php if ($i === $page): ?>
+                                    <span class="current"><?= $i ?></span>
+                                <?php else: ?>
+                                    <a href="?page=<?= $i ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= $sort_by !== 'name_asc' ? '&sort_by=' . urlencode($sort_by) : '' ?>">
+                                        <?= $i ?>
+                                    </a>
+                                <?php endif; ?>
+                            <?php endfor; ?>
+
+                            <?php if ($end_page < $total_pages): ?>
+                                <?php if ($end_page < $total_pages - 1): ?>
+                                    <span style="padding: 0 0.25rem; color: #999;">...</span>
+                                <?php endif; ?>
+                                <a href="?page=<?= $total_pages ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= $sort_by !== 'name_asc' ? '&sort_by=' . urlencode($sort_by) : '' ?>">
+                                    <?= $total_pages ?>
+                                </a>
+                            <?php endif; ?>
+
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?page=<?= $page + 1 ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?><?= $sort_by !== 'name_asc' ? '&sort_by=' . urlencode($sort_by) : '' ?>" title="Next Page">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            <?php else: ?>
+                                <span style="color: #ccc; cursor: not-allowed;"><i class="fas fa-chevron-right"></i></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             <?php endif; ?>
 
         <?php else: ?>
-            <!-- No Results (unchanged) -->
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h3>No organizations found</h3>
+                <p><?= !empty($search) ? 'Try searching with different keywords' : 'No organizations available at this time' ?></p>
+                <?php if (!empty($search)): ?>
+                    <a href="organizations.php" class="view-all-btn">View All Organizations</a>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
     </div>
 

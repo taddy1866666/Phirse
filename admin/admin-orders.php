@@ -740,13 +740,25 @@ try {
                     <option value="completed">Completed</option>
                 </select>
 
-                <form id="exportForm" action="export_orders.php" method="POST" style="margin: 0;">
-                    <input type="hidden" name="status" id="exportStatus">
-                    <button type="submit" class="export-btn">
-                        <i class="fas fa-download"></i>
-                        Export CSV
-                    </button>
-                </form>
+                <a href="export_orders_pdf.php" style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    border: none;
+                    cursor: pointer;
+                    white-space: nowrap;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.3)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                    <i class="fas fa-file-pdf"></i>
+                    Export to PDF
+                </a>
             </div>
         </div>
 

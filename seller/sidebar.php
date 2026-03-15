@@ -39,6 +39,11 @@
     </li>
     
     <li><a href="seller-orders.php" class="<?php echo ($current_page == 'seller-orders.php') ? 'active' : ''; ?>"><i class="fas fa-shopping-cart"></i><span>Orders</span></a></li>
+  </ul>
+  
+  <!-- Bottom Menu Section -->
+  <ul class="sidebar-menu sidebar-bottom-menu">
+    <li><a href="seller-edit-profile.php" class="<?php echo ($current_page == 'seller-edit-profile.php') ? 'active' : ''; ?>"><i class="fas fa-user-edit"></i><span>Edit Profile</span></a></li>
     <li><a href="seller-logout.php"><i class="fas fa-sign-out-alt"></i><span>Log out</span></a></li>
   </ul>
 </div>
@@ -66,6 +71,7 @@
     background: rgba(255,255,255,0.9);
     color: #0f172a;
     overflow-x: hidden;
+    overflow-y: auto;
     transition: width 0.3s ease;
     z-index: 1000;
     box-shadow: 0 20px 40px rgba(0,0,0,0.06);
@@ -73,6 +79,8 @@
     border-bottom-right-radius: 16px;
     backdrop-filter: blur(8px);
     border-right: 1px solid rgba(15, 23, 42, 0.06);
+    display: flex;
+    flex-direction: column;
   }
 
   .sidebar.expanded {
@@ -157,9 +165,23 @@
     list-style: none;
     padding: 0;
     margin: 28px 0 0 0;
+    flex: 1;
+  }
+
+  .sidebar-bottom-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid rgba(15, 23, 42, 0.1);
+    padding-top: 12px;
+    padding-bottom: 12px;
   }
 
   .sidebar-menu > li {
+    padding: 4px 10px;
+  }
+
+  .sidebar-bottom-menu > li {
     padding: 4px 10px;
   }
 
@@ -426,6 +448,11 @@
       if (sidebar.classList.contains('expanded')) {
         dropdown.classList.add('active');
       }
+    });
+
+    // Close dropdown on mouse leave
+    dropdown.addEventListener('mouseleave', () => {
+      dropdown.classList.remove('active');
     });
   });
 

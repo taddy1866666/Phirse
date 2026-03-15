@@ -42,25 +42,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
     if (!empty($student_number) && !empty($student_name) && !empty($organization) && !empty($password)) {
         try {
             // Check if student number already exists
-            $check_stmt = $pdo->prepare("SELECT id FROM students WHERE student_number = ?");
+            $check_stmt = $pdo->prepare("SELECT id, contact_number FROM students WHERE student_number = ?");
             $check_stmt->execute([$student_number]);
-            
-            if ($check_stmt->fetch()) {
-                $error = "Student number already exists.";
+            $existing_student = $check_stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Check if contact number is provided and already used by another student
+            if (!empty($contact_number)) {
+                $contact_check = $pdo->prepare("SELECT id FROM students WHERE contact_number = ?");
+                $contact_check->execute([$contact_number]);
+                $contact_conflict = $contact_check->fetch(PDO::FETCH_ASSOC);
+                if ($contact_conflict && (!$existing_student || $contact_conflict['id'] != $existing_student['id'])) {
+                    $error = "Contact number already exists for another student.";
+                }
+            }
+
+            if (isset($error) && $error !== '') {
+                // contact conflict detected
+            } elseif ($existing_student) {
+                // Student already exists. Create affiliation if not exists.
+                $existing_id = $existing_student['id'];
+                $aff_check = $pdo->prepare("SELECT id FROM student_seller_affiliations WHERE student_id = ? AND seller_id = ?");
+                $aff_check->execute([$existing_id, $seller_id]);
+
+                if ($aff_check->fetch()) {
+                    $error = "Student number already exists and is already registered with your organization.";
+                } else {
+                    // Create affiliation
+                    $affiliation_stmt = $pdo->prepare("INSERT INTO student_seller_affiliations (student_id, seller_id) VALUES (?, ?)");
+                    $affiliation_stmt->execute([$existing_id, $seller_id]);
+                    header('Location: registered-students.php?message=Student linked to your organization');
+                    exit();
+                }
             } else {
-                $stmt = $pdo->prepare("INSERT INTO students (student_number, student_name, organization, course_section, contact_number, email, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $stmt->execute([$student_number, $student_name, $organization, $course_section, $contact_number, $email, $hashed_password]);
-                
-                // Get the inserted student ID
-                $student_id = $pdo->lastInsertId();
-                
-                // Create affiliation with current seller
-                $affiliation_stmt = $pdo->prepare("INSERT INTO student_seller_affiliations (student_id, seller_id) VALUES (?, ?)");
-                $affiliation_stmt->execute([$student_id, $seller_id]);
-                
-                header('Location: registered-students.php?message=Student added successfully');
-                exit();
+                // New student - ensure contact number is not used
+                if (!empty($contact_number)) {
+                    $contact_check2 = $pdo->prepare("SELECT id FROM students WHERE contact_number = ?");
+                    $contact_check2->execute([$contact_number]);
+                    if ($contact_check2->fetch()) {
+                        $error = "Contact number already exists for another student.";
+                    }
+                }
+            
+                if (empty($error)) {
+                    $stmt = $pdo->prepare("INSERT INTO students (student_number, student_name, organization, course_section, contact_number, email, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                    $stmt->execute([$student_number, $student_name, $organization, $course_section, $contact_number, $email, $hashed_password]);
+                    
+                    // Get the inserted student ID
+                    $student_id = $pdo->lastInsertId();
+                    
+                    // Create affiliation with current seller
+                    $affiliation_stmt = $pdo->prepare("INSERT INTO student_seller_affiliations (student_id, seller_id) VALUES (?, ?)");
+                    $affiliation_stmt->execute([$student_id, $seller_id]);
+                    
+                    header('Location: registered-students.php?message=Student added successfully');
+                    exit();
+                }
             }
         } catch(PDOException $e) {
             $error = "Error adding student: " . $e->getMessage();
@@ -96,8 +133,94 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
+// Handle bulk delete request
+if (isset($_POST['delete_multiple'])) {
+    try {
+        $ids = json_decode($_POST['delete_multiple'], true);
+        
+        if (!is_array($ids) || empty($ids)) {
+            throw new Exception("Invalid selection");
+        }
+        
+        // Validate all IDs are numeric
+        foreach ($ids as $id) {
+            if (!is_numeric($id)) {
+                throw new Exception("Invalid student ID");
+            }
+        }
+        
+        // Delete affiliations for all selected students
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt_aff = $pdo->prepare("DELETE FROM student_seller_affiliations WHERE student_id IN ($placeholders) AND seller_id = ?");
+        $ids_with_seller = array_merge($ids, [$seller_id]);
+        $stmt_aff->execute($ids_with_seller);
+        
+        // Delete students that have no other affiliations
+        foreach ($ids as $student_id) {
+            $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM student_seller_affiliations WHERE student_id = ?");
+            $check_stmt->execute([$student_id]);
+            $affiliation_count = $check_stmt->fetchColumn();
+            
+            if ($affiliation_count == 0) {
+                $stmt = $pdo->prepare("DELETE FROM students WHERE id = ?");
+                $stmt->execute([$student_id]);
+            }
+        }
+        
+        $_SESSION['message'] = "Successfully deleted " . count($ids) . " student(s)!";
+        header('Location: registered-students.php');
+        exit();
+    } catch(Exception $e) {
+        $_SESSION['error'] = "Error deleting students: " . $e->getMessage();
+        header('Location: registered-students.php');
+        exit();
+    }
+}
+
+// Handle password reset request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
+    $student_id = intval($_POST['student_id'] ?? 0);
+    $new_password = $_POST['new_password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    $reset_error = '';
+    $reset_success = '';
+    
+    if ($student_id && !empty($new_password) && !empty($confirm_password)) {
+        if ($new_password !== $confirm_password) {
+            $reset_error = "Passwords do not match.";
+        } elseif (strlen($new_password) < 6) {
+            $reset_error = "Password must be at least 6 characters long.";
+        } else {
+            try {
+                // Verify student belongs to this seller
+                $check_stmt = $pdo->prepare("
+                    SELECT s.id FROM students s
+                    JOIN student_seller_affiliations ssa ON s.id = ssa.student_id
+                    WHERE s.id = ? AND ssa.seller_id = ?
+                ");
+                $check_stmt->execute([$student_id, $seller_id]);
+                
+                if ($check_stmt->fetch()) {
+                    $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+                    $update_stmt = $pdo->prepare("UPDATE students SET password = ? WHERE id = ?");
+                    $update_stmt->execute([$hashed_password, $student_id]);
+                    $reset_success = "Password reset successfully!";
+                } else {
+                    $reset_error = "Unauthorized: Student not found in your organization.";
+                }
+            } catch(PDOException $e) {
+                $reset_error = "Error resetting password: " . $e->getMessage();
+            }
+        }
+    } else {
+        $reset_error = "Please fill in all fields.";
+    }
+}
+
 // Handle search
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$year_level_filter = isset($_GET['year_level']) ? trim($_GET['year_level']) : '';
+$section_filter = isset($_GET['section']) ? trim($_GET['section']) : '';
 $where_conditions = [];
 $params = [];
 
@@ -112,6 +235,18 @@ if (!empty($search)) {
     $params[] = $search_param;
     $params[] = $search_param;
     $params[] = $search_param;
+}
+
+// Add year level filter if provided
+if (!empty($year_level_filter)) {
+    $where_conditions[] = "s.course_section LIKE ?";
+    $params[] = $year_level_filter . "-%";
+}
+
+// Add section filter if provided
+if (!empty($section_filter)) {
+    $where_conditions[] = "s.course_section LIKE ?";
+    $params[] = "%-" . $section_filter;
 }
 
 // Build WHERE clause
@@ -299,6 +434,60 @@ try {
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e5e5e7;
+        }
+        
+        .select-all-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #424245;
+            user-select: none;
+        }
+        
+        .select-all-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .delete-selected-btn {
+            background: #ff3b30;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            margin-left: auto;
+        }
+        
+        .delete-selected-btn:hover {
+            background: #d70015;
+            transform: translateY(-1px);
+        }
+        
+        .student-checkbox {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
         }
         
         .students-table {
@@ -652,14 +841,56 @@ try {
             </div>
             
             <div class="search-container">
-                <form method="GET">
+                <form method="GET" id="filterForm" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <input 
                         type="text" 
                         name="search" 
                         class="search-input" 
                         placeholder="Search by student number, name, or course & section"
                         value="<?php echo htmlspecialchars($search); ?>"
+                        style="flex: 1; min-width: 250px;"
+                        onkeyup="document.getElementById('filterForm').submit();"
                     >
+                    <select name="year_level" style="padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; cursor: pointer; background: white;" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">All Year Levels</option>
+                        <?php 
+                        // Get unique year levels for this seller's students
+                        try {
+                            $year_sql = "SELECT DISTINCT SUBSTRING_INDEX(s.course_section, '-', 1) as year_level 
+                                        FROM students s 
+                                        JOIN student_seller_affiliations ssa ON s.id = ssa.student_id 
+                                        WHERE ssa.seller_id = ? AND s.course_section IS NOT NULL AND s.course_section != '' 
+                                        ORDER BY year_level";
+                            $year_stmt = $pdo->prepare($year_sql);
+                            $year_stmt->execute([$seller_id]);
+                            $years = $year_stmt->fetchAll(PDO::FETCH_ASSOC);
+                            foreach ($years as $year) {
+                                $selected = ($year_level_filter === $year['year_level']) ? 'selected' : '';
+                                echo '<option value="' . htmlspecialchars($year['year_level']) . '" ' . $selected . '>Year ' . htmlspecialchars($year['year_level']) . '</option>';
+                            }
+                        } catch (Exception $e) {}
+                        ?>
+                    </select>
+                    <select name="section" style="padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; cursor: pointer; background: white;" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">All Sections</option>
+                        <?php 
+                        // Get unique sections for this seller's students
+                        try {
+                            $section_sql = "SELECT DISTINCT SUBSTRING_INDEX(s.course_section, '-', -1) as section 
+                                           FROM students s 
+                                           JOIN student_seller_affiliations ssa ON s.id = ssa.student_id 
+                                           WHERE ssa.seller_id = ? AND s.course_section IS NOT NULL AND s.course_section != '' 
+                                           ORDER BY section";
+                            $section_stmt = $pdo->prepare($section_sql);
+                            $section_stmt->execute([$seller_id]);
+                            $sections = $section_stmt->fetchAll(PDO::FETCH_ASSOC);
+                            foreach ($sections as $section) {
+                                $selected = ($section_filter === $section['section']) ? 'selected' : '';
+                                echo '<option value="' . htmlspecialchars($section['section']) . '" ' . $selected . '>Section ' . htmlspecialchars($section['section']) . '</option>';
+                            }
+                        } catch (Exception $e) {}
+                        ?>
+                    </select>
                 </form>
             </div>
 
@@ -669,9 +900,19 @@ try {
                         No students found<?php echo !empty($search) ? ' for your search criteria' : ''; ?>.
                     </div>
                 <?php else: ?>
+                    <div class="bulk-actions">
+                        <label class="select-all-label">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                            <span>Select All</span>
+                        </label>
+                        <button class="delete-selected-btn" onclick="deleteSelected()" id="deleteSelectedBtn" style="display: none;">
+                            <i class="fas fa-trash"></i> Delete Selected
+                        </button>
+                    </div>
                     <table class="students-table">
                         <thead>
                             <tr>
+                                <th style="width: 40px; text-align: center;"></th>
                                 <th>ID</th>
                                 <th>Student Number</th>
                                 <th>Name</th>
@@ -682,7 +923,10 @@ try {
                         </thead>
                         <tbody>
                             <?php foreach ($students as $student): ?>
-                                <tr>
+                                <tr class="student-row" data-student-id="<?php echo $student['id']; ?>">
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" class="student-checkbox" value="<?php echo $student['id']; ?>" onchange="updateSelectAllState()">
+                                    </td>
                                     <td><?php echo htmlspecialchars($student['id']); ?></td>
                                     <td><?php echo htmlspecialchars($student['student_number']); ?></td>
                                     <td><?php echo htmlspecialchars($student['student_name']); ?></td>
@@ -691,9 +935,10 @@ try {
                                     <td>
                                         <button 
                                             class="action-btn" 
-                                            onclick="confirmDelete(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['student_name']); ?>')"
+                                            onclick="showResetPasswordModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['student_name']); ?>')"
+                                            style="background: #667eea;"
                                         >
-                                            Delete
+                                            Reset Password
                                         </button>
                                     </td>
                                 </tr>
@@ -736,6 +981,50 @@ try {
                         <i class="fas fa-upload"></i> Upload & Register
                     </button>
                     <button type="button" class="cancel-btn-modal" onclick="hideUploadModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="hideResetPasswordModal()">&times;</button>
+            <div class="modal-title">Reset Student Password</div>
+            <?php if (!empty($reset_error)): ?>
+                <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #dc3545;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php echo htmlspecialchars($reset_error); ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (!empty($reset_success)): ?>
+                <div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #28a745;">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo htmlspecialchars($reset_success); ?>
+                </div>
+            <?php endif; ?>
+            
+            <form method="POST">
+                <input type="hidden" name="student_id" id="resetStudentId" value="">
+                
+                <div class="form-group">
+                    <label>Student: <span id="resetStudentName" style="font-weight: bold; color: #667eea;"></span></label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new_password">New Password *</label>
+                    <input type="password" name="new_password" id="new_password" required minlength="6" placeholder="Enter new password (minimum 6 characters)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password">Confirm Password *</label>
+                    <input type="password" name="confirm_password" id="confirm_password" required minlength="6" placeholder="Confirm new password">
+                </div>
+                
+                <div class="register-cancel-buttons">
+                    <button type="submit" name="reset_password" class="register-btn-modal">Reset Password</button>
+                    <button type="button" class="cancel-btn-modal" onclick="hideResetPasswordModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -806,6 +1095,61 @@ try {
             }
         }
         
+        function toggleSelectAll(checkbox) {
+            const allCheckboxes = document.querySelectorAll('.student-checkbox');
+            allCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateDeleteButtonState();
+        }
+        
+        function updateSelectAllState() {
+            const allCheckboxes = document.querySelectorAll('.student-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const checkedCount = document.querySelectorAll('.student-checkbox:checked').length;
+            
+            selectAllCheckbox.checked = checkedCount === allCheckboxes.length && allCheckboxes.length > 0;
+            updateDeleteButtonState();
+        }
+        
+        function updateDeleteButtonState() {
+            const checkedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            const deleteBtn = document.getElementById('deleteSelectedBtn');
+            
+            if (checkedCheckboxes.length > 0) {
+                deleteBtn.style.display = 'flex';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+        }
+        
+        function deleteSelected() {
+            const checkedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            if (checkedCheckboxes.length === 0) {
+                alert('Please select at least one student to delete.');
+                return;
+            }
+            
+            const selectedIds = Array.from(checkedCheckboxes).map(cb => cb.value);
+            const count = selectedIds.length;
+            
+            if (confirm(`Are you sure you want to delete ${count} student(s)? This action cannot be undone.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'registered-students.php';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'delete_multiple';
+                input.value = JSON.stringify(selectedIds);
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
         function showModal() {
             document.getElementById('addStudentModal').classList.add('show');
         }
@@ -822,14 +1166,30 @@ try {
             document.getElementById('uploadExcelModal').classList.remove('show');
         }
 
+        function showResetPasswordModal(studentId, studentName) {
+            document.getElementById('resetStudentId').value = studentId;
+            document.getElementById('resetStudentName').textContent = studentName;
+            document.getElementById('new_password').value = '';
+            document.getElementById('confirm_password').value = '';
+            document.getElementById('resetPasswordModal').classList.add('show');
+        }
+
+        function hideResetPasswordModal() {
+            document.getElementById('resetPasswordModal').classList.remove('show');
+        }
+
         window.onclick = function(event) {
             var modal = document.getElementById('addStudentModal');
             var uploadModal = document.getElementById('uploadExcelModal');
+            var resetPasswordModal = document.getElementById('resetPasswordModal');
             if (event.target == modal) {
                 hideModal();
             }
             if (event.target == uploadModal) {
                 hideUploadModal();
+            }
+            if (event.target == resetPasswordModal) {
+                hideResetPasswordModal();
             }
         }
 
@@ -837,6 +1197,7 @@ try {
             if (event.key === 'Escape') {
                 hideModal();
                 hideUploadModal();
+                hideResetPasswordModal();
             }
         });
     </script>

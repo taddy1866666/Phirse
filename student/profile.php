@@ -12,6 +12,47 @@ if (!isset($_SESSION['student_id'])) {
 
 $student_id = $_SESSION['student_id'];
 
+// Handle change password
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+    $current_password = $_POST['current_password'] ?? '';
+    $new_password = $_POST['new_password'] ?? '';
+    $confirm_password = $_POST['confirm_new_password'] ?? '';
+    $password_error = '';
+    $password_success = '';
+    
+    if (empty($current_password) || empty($new_password) || empty($confirm_password)) {
+        $password_error = "All fields are required.";
+    } elseif ($new_password !== $confirm_password) {
+        $password_error = "New passwords do not match.";
+    } elseif (strlen($new_password) < 6) {
+        $password_error = "New password must be at least 6 characters long.";
+    } else {
+        // Verify current password
+        $query = "SELECT password FROM students WHERE id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+        
+        if (password_verify($current_password, $user['password'])) {
+            // Update password
+            $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+            $update_query = "UPDATE students SET password = ? WHERE id = ?";
+            $update_stmt = $conn->prepare($update_query);
+            $update_stmt->bind_param("si", $hashed_password, $student_id);
+            
+            if ($update_stmt->execute()) {
+                $password_success = "Password changed successfully!";
+            } else {
+                $password_error = "Failed to update password. Please try again.";
+            }
+        } else {
+            $password_error = "Current password is incorrect.";
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_account'])) {
     $confirm_password = $_POST['confirm_password'] ?? '';
     
@@ -269,6 +310,21 @@ $student = $result->fetch_assoc();
         }
 
         .btn-secondary:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
             transform: translateY(-1px);
         }
 
@@ -604,10 +660,73 @@ $student = $result->fetch_assoc();
             <i class="fas fa-arrow-left"></i>
             Back to Dashboard
         </a>
+        <button class="btn btn-primary" onclick="showChangePasswordModal()">
+            <i class="fas fa-lock"></i>
+            Change Password
+        </button>
         <button class="btn btn-danger" onclick="showDeleteModal()">
             <i class="fas fa-trash-alt"></i>
             Delete Account
         </button>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePasswordModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <i class="fas fa-lock"></i>
+            <h3>Change Password</h3>
+        </div>
+        <div class="modal-body">
+            <?php if (!empty($password_error)): ?>
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span><?= htmlspecialchars($password_error); ?></span>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (!empty($password_success)): ?>
+                <div style="background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); color: #155724; padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #28a745; font-size: 0.9rem; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-check-circle"></i>
+                    <span><?= htmlspecialchars($password_success); ?></span>
+                </div>
+            <?php endif; ?>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="current_password">
+                        <i class="fas fa-key"></i> Current Password
+                    </label>
+                    <input type="password" name="current_password" id="current_password" required placeholder="Enter your current password">
+                </div>
+
+                <div class="form-group">
+                    <label for="new_password">
+                        <i class="fas fa-lock"></i> New Password
+                    </label>
+                    <input type="password" name="new_password" id="new_password" required placeholder="Enter new password (minimum 6 characters)">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_new_password">
+                        <i class="fas fa-lock"></i> Confirm New Password
+                    </label>
+                    <input type="password" name="confirm_new_password" id="confirm_new_password" required placeholder="Confirm your new password">
+                </div>
+                
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="hideChangePasswordModal()">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                    <button type="submit" name="change_password" class="btn btn-primary">
+                        <i class="fas fa-check"></i>
+                        Change Password
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -671,11 +790,24 @@ $student = $result->fetch_assoc();
         document.getElementById('deleteModal').classList.remove('show');
     }
 
+    function showChangePasswordModal() {
+        document.getElementById('changePasswordModal').classList.add('show');
+    }
+
+    function hideChangePasswordModal() {
+        document.getElementById('changePasswordModal').classList.remove('show');
+    }
+
     // Close modal when clicking outside
     window.onclick = function(event) {
-        var modal = document.getElementById('deleteModal');
-        if (event.target == modal) {
+        var deleteModal = document.getElementById('deleteModal');
+        var changePasswordModal = document.getElementById('changePasswordModal');
+        
+        if (event.target == deleteModal) {
             hideDeleteModal();
+        }
+        if (event.target == changePasswordModal) {
+            hideChangePasswordModal();
         }
     }
 
@@ -683,12 +815,13 @@ $student = $result->fetch_assoc();
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             hideDeleteModal();
+            hideChangePasswordModal();
         }
     });
 
-    <?php if (isset($error)): ?>
-        // Show modal if there's an error
-        showDeleteModal();
+    <?php if (!empty($password_error) || !empty($password_success)): ?>
+        // Show modal if there's a password message
+        showChangePasswordModal();
     <?php endif; ?>
 
     // Add smooth scroll behavior

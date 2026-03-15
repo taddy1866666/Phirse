@@ -57,9 +57,26 @@ try {
         ORDER BY date ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
+    // Revenue per Organization
+    $revenuePerOrg = $pdo->query("
+        SELECT 
+            s.organization,
+            s.logo_path,
+            COUNT(o.id) as total_orders,
+            ROUND(SUM(o.total_price), 2) as total_revenue
+        FROM orders o
+        JOIN products p ON o.product_id = p.id
+        JOIN sellers s ON p.seller_id = s.id
+        WHERE o.status = 'completed'
+        GROUP BY s.organization, s.logo_path
+        ORDER BY total_revenue DESC
+        LIMIT 10
+    ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
 } catch (PDOException $e) {
     $totalRevenue = $monthlyRevenue = $averageOrderValue = $growthRate = 0;
     $revenueData = [];
+    $revenuePerOrg = [];
 }
 
 // Format revenue data for Chart.js
@@ -648,6 +665,96 @@ for ($i = 29; $i >= 0; $i--) {
             grid-column: span 6;
         }
 
+        /* Revenue per Organization Styles */
+        .org-revenue-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .org-revenue-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .org-revenue-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .org-logo {
+            flex-shrink: 0;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .org-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .no-logo {
+            font-size: 32px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .org-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .org-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 6px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .order-count {
+            font-size: 13px;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .org-revenue {
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        .revenue-amount {
+            font-size: 18px;
+            font-weight: 700;
+            display: block;
+        }
+
+        /* Revenue per Organization Top Section */
+        .org-revenue-section {
+            width: 100%;
+            margin-bottom: 32px;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -669,6 +776,10 @@ for ($i = 29; $i >= 0; $i--) {
             .orgs-section,
             .products-section {
                 grid-column: span 12;
+            }
+
+            .org-revenue-container {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             }
         }
 
@@ -719,6 +830,46 @@ for ($i = 29; $i >= 0; $i--) {
             .orgs-section,
             .products-section {
                 grid-column: span 12;
+            }
+
+            .org-revenue-container {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .org-revenue-container {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .org-revenue-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 12px;
+            }
+
+            .org-info {
+                text-align: center;
+            }
+
+            .org-info h3 {
+                font-size: 14px;
+            }
+
+            .org-revenue {
+                text-align: center;
+                margin-top: 8px;
+            }
+
+            .revenue-amount {
+                font-size: 16px;
+            }
+
+            .org-logo {
+                width: 60px !important;
+                height: 60px !important;
             }
         }
 
@@ -877,6 +1028,48 @@ for ($i = 29; $i >= 0; $i--) {
             </div>
         </div>
     </a>
+
+        <!-- Revenue per Organization - Top Section -->
+        <div class="org-revenue-section">
+            <div class="analytics-section" id="revenuePerOrgSection">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-store"></i>
+                        Revenue per Organization
+                    </div>
+                </div>
+
+                <div class="org-revenue-container">
+                    <?php if (!empty($revenuePerOrg)): ?>
+                        <?php foreach ($revenuePerOrg as $org): ?>
+                            <div class="org-revenue-card">
+                                <div class="org-logo">
+                                    <?php if ($org['logo_path']): ?>
+                                        <img src="<?php echo htmlspecialchars($org['logo_path']); ?>" 
+                                             alt="<?php echo htmlspecialchars($org['organization']); ?>"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e0e0e0%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2224%22 fill=%22%23999%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E?%3C/text%3E%3C/svg%3E'">
+                                    <?php else: ?>
+                                        <div class="no-logo">
+                                            <i class="fas fa-building"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="org-info">
+                                    <h3><?php echo htmlspecialchars($org['organization']); ?></h3>
+                                    <p class="order-count">Orders: <?php echo $org['total_orders']; ?></p>
+                                </div>
+                                <div class="org-revenue">
+                                    <span class="revenue-amount">₱<?php echo number_format($org['total_revenue'], 2); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p style="color:#718096; text-align: center; padding: 40px;">No revenue data available</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
         <div class="analytics-wrapper">
             <!-- Revenue Report with Chart -->
             <div class="analytics-section revenue-section" id="revenueSection">
@@ -1521,6 +1714,74 @@ for ($i = 29; $i >= 0; $i--) {
                     pdf.setTextColor(160, 174, 192);
                     pdf.setFontSize(10);
                     pdf.text('No organization data available', pageWidth / 2, yPosition + 20, { align: 'center' });
+                }
+
+                // Revenue per Organization Page
+                pdf.addPage();
+                yPosition = 20;
+                
+                pdf.setTextColor(26, 32, 44);
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Revenue per Organization', 15, yPosition);
+                yPosition += 10;
+
+                const revenuePerOrgData = <?php echo json_encode($revenuePerOrg); ?>;
+
+                if (revenuePerOrgData && revenuePerOrgData.length > 0) {
+                    revenuePerOrgData.forEach((org, index) => {
+                        if (yPosition > pageHeight - 30) {
+                            pdf.addPage();
+                            yPosition = 20;
+                        }
+
+                        const rank = index + 1;
+                        const orgName = org.organization || 'Unknown';
+                        const totalOrders = parseInt(org.total_orders) || 0;
+                        const totalRevenue = parseFloat(org.total_revenue) || 0;
+
+                        // Organization row
+                        pdf.setFillColor(248, 249, 250);
+                        pdf.roundedRect(15, yPosition, pageWidth - 30, 15, 2, 2, 'F');
+
+                        // Rank badge
+                        if (rank <= 3) {
+                            const colors = [[251, 191, 36], [148, 163, 184], [251, 146, 60]];
+                            pdf.setFillColor(...colors[rank - 1]);
+                        } else {
+                            pdf.setFillColor(102, 126, 234);
+                        }
+                        pdf.roundedRect(20, yPosition + 3, 8, 8, 1, 1, 'F');
+                        pdf.setTextColor(255, 255, 255);
+                        pdf.setFontSize(10);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.text(rank.toString(), 24, yPosition + 8.5, { align: 'center' });
+
+                        // Organization name
+                        pdf.setTextColor(26, 32, 44);
+                        pdf.setFontSize(11);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.text(orgName.substring(0, 40), 33, yPosition + 7);
+
+                        // Order count
+                        pdf.setTextColor(113, 128, 150);
+                        pdf.setFontSize(9);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.text(`${totalOrders} order${totalOrders !== 1 ? 's' : ''}`, 33, yPosition + 12);
+
+                        // Revenue
+                        pdf.setTextColor(102, 126, 234);
+                        pdf.setFontSize(11);
+                        pdf.setFont(undefined, 'bold');
+                        const revenueText = `₱${totalRevenue.toLocaleString('en-PH', {minimumFractionDigits: 2})}`;
+                        pdf.text(revenueText, pageWidth - 20, yPosition + 9, { align: 'right' });
+
+                        yPosition += 20;
+                    });
+                } else {
+                    pdf.setTextColor(160, 174, 192);
+                    pdf.setFontSize(10);
+                    pdf.text('No revenue per organization data available', pageWidth / 2, yPosition + 20, { align: 'center' });
                 }
 
                 // Top Products

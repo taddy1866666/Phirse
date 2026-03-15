@@ -82,29 +82,30 @@ try {
     $stmt->execute(['seller_id' => $seller_id]);
     $topProducts = $stmt->fetchAll(PDO::FETCH_ASSOC); // loop when rendering
 
-    // ===== TOP ORGANIZATION SALES (current month) - PDO version =====
+    // ===== TOP SELLING CATEGORIES (current month) - PDO version =====
     try {
         $currentMonth = (int)date('m');
         $currentYear  = (int)date('Y');
 
-        $topOrganizationsQuery = "SELECT 
-            COALESCE(NULLIF(s.organization, ''), s.seller_name) AS organization_name,
-            ROUND(SUM(o.total_price), 2) AS total_sales
+        $topCategoriesQuery = "SELECT 
+            COALESCE(p.category, 'Uncategorized') AS category_name,
+            SUM(o.quantity) AS total_sold
         FROM orders o
-        INNER JOIN sellers s ON o.seller_id = s.id
+        INNER JOIN products p ON o.product_id = p.id
         WHERE MONTH(o.order_date) = :month
           AND YEAR(o.order_date) = :year
           AND o.status IN ('paid','confirmed','approved','completed')
-        GROUP BY organization_name
-        ORDER BY total_sales DESC
+          AND o.seller_id = :seller_id
+        GROUP BY p.category
+        ORDER BY total_sold DESC
         LIMIT 5";
 
-        $stmt = $pdo->prepare($topOrganizationsQuery);
-        $stmt->execute(['month' => $currentMonth, 'year' => $currentYear]);
-        $topOrganizations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare($topCategoriesQuery);
+        $stmt->execute(['month' => $currentMonth, 'year' => $currentYear, 'seller_id' => $seller_id]);
+        $topCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         // optional: log $e->getMessage(); keep UI clean
-        $topOrganizations = [];
+        $topCategories = [];
     }
 } catch (PDOException $e) {
     $totalProducts = 0;
@@ -122,43 +123,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $update_successful = false;
     $upload_path = null;
 
-    // Handle QR code upload if provided
-    if ($has_qr_upload) {
-        $upload_dir = '../uploads/gcash/';
-
-        // Create directory if it doesn't exist
-        if (!file_exists($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+    // Validate GCash number format - if provided, must be exactly 11 digits
+    if (!empty($gcash_number)) {
+        if (!preg_match('/^[0-9]{11}$/', $gcash_number)) {
+            $error_message = "GCash number must be exactly 11 digits.";
         }
-
-        $file = $_FILES['gcash_qr'];
-        $allowed_types = ['image/jpeg', 'image/jpg', 'image/png'];
-
-        if (in_array($file['type'], $allowed_types)) {
-            $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $new_filename = 'gcash_qr_' . $seller_id . '_' . time() . '.' . $file_extension;
-            $upload_path = $upload_dir . $new_filename;
-
-            if (move_uploaded_file($file['tmp_name'], $upload_path)) {
-                // Delete old QR code if exists
-                if (!empty($gcash_qr) && file_exists($gcash_qr)) {
-                    unlink($gcash_qr);
-                }
-                $update_successful = true;
-            } else {
-                $error_message = "Failed to upload QR code.";
-            }
+    }
+    
+    // Check if number is incomplete (less than 11 digits) and no QR uploaded
+    if (!isset($error_message) && !empty($gcash_number) && strlen($gcash_number) < 11 && !$has_qr_upload) {
+        $error_message = "GCash number must be exactly 11 digits.";
+    }
+    
+    // If no validation error yet, continue
+    if (!isset($error_message)) {
+        if (empty($gcash_number) && !$has_qr_upload) {
+            // No number AND no file upload
+            $error_message = "Please enter a valid 11-digit GCash number or upload a QR code.";
         } else {
-            $error_message = "Only JPG, JPEG, and PNG files are allowed.";
+            // Handle QR code upload if provided
+            if ($has_qr_upload) {
+                $upload_dir = '../uploads/gcash/';
+
+                // Create directory if it doesn't exist
+                if (!file_exists($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+
+                $file = $_FILES['gcash_qr'];
+                $allowed_types = ['image/jpeg', 'image/jpg', 'image/png'];
+
+                if (in_array($file['type'], $allowed_types)) {
+                    $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    $new_filename = 'gcash_qr_' . $seller_id . '_' . time() . '.' . $file_extension;
+                    $upload_path = $upload_dir . $new_filename;
+
+                    if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                        // Delete old QR code if exists
+                        if (!empty($gcash_qr) && file_exists($gcash_qr)) {
+                            unlink($gcash_qr);
+                        }
+                        $update_successful = true;
+                    } else {
+                        $error_message = "Failed to upload QR code.";
+                    }
+                } else {
+                    $error_message = "Only JPG, JPEG, and PNG files are allowed.";
+                }
+            } else {
+                // No QR upload, but GCash number is complete (11 digits)
+                if (!empty($gcash_number) && strlen($gcash_number) === 11) {
+                    $update_successful = true;
+                }
+            }
         }
-    } else {
-        $update_successful = true; // No QR upload but we can still update the number
     }
 
     // Update database with new information
     if ($update_successful) {
         $sql = "UPDATE sellers SET gcash_number = ?";
-        $params = [$gcash_number];
+        $params = [$gcash_number ?: null]; // Convert empty string to NULL
         
         if ($has_qr_upload && $upload_path) {
             $sql .= ", gcash_qr_path = ?";
@@ -191,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/png" href="../uploads/images/Plogo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1143,10 +1168,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 3px 6px rgba(52, 199, 89, 0.3);
             transform: translateY(-2px);
         }
+
+        /* Export Button */
+        .export-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .export-btn:active {
+            transform: translateY(0);
+        }
+
+        .export-btn i {
+            font-size: 16px;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a202c;
+        }
     </style>
 </head>
 
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Generating PDF Report...</div>
+        </div>
+    </div>
+
     <?php include 'sidebar.php'; ?>
     <button class="mobile-menu-toggle" id="mobileMenuToggle">
         <i class="fas fa-bars"></i>
@@ -1158,7 +1268,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-home"></i>
                 Home > Dashboard
             </div>
-            <div class="notification-container">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="export-btn" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf"></i>
+                    Export Report
+                </button>
+                <div class="notification-container">
                 <div class="welcome-text">
                     Welcome, <?php echo htmlspecialchars($seller_name ?: 'Seller'); ?>!
                 </div>
@@ -1187,6 +1302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="notification-popup-footer">
                         <a href="seller-notifications.php">View All Notifications</a>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -1236,42 +1352,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- 🔲 OTHER SECTIONS (Empty for now) -->
 
-            <!-- 🏆 TOP ORGANIZATION SALES -->
+            <!-- 🏆 TOP SELLING CATEGORIES -->
             <div class="analytics-section">
 
                 <div class="card-header">
-                    <h2 class="section-title"><i class="fas fa-trophy"></i> Top Organization Sales</h2>
-                    <select id="monthFilter" class="month-filter">
-                        <option value="current">This Month</option>
-                        <option value="last6">Last 6 Months</option>
-                    </select>
+                    <h2 class="section-title"><i class="fas fa-trophy"></i> Top Selling Categories</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-period="7days" onclick="loadTopCategories('7days', this)">7 Days</button>
+                        <button class="filter-btn" data-period="month" onclick="loadTopCategories('month', this)">This Month</button>
+                        <button class="filter-btn" data-period="30days" onclick="loadTopCategories('30days', this)">Last 30 Days</button>
+                    </div>
                 </div>
 
-                <div id="topOrgSalesContainer" class="top-org-container">
+                <div id="topCategoriesContainer" class="categories-container">
                     <?php
-                    if (!empty($topOrganizations)) {
-                        // Find the top sales value for bar scaling
-                        $maxSales = max(array_column($topOrganizations, 'total_sales'));
-                        $delay = 0;
-                        foreach ($topOrganizations as $org) {
-                            $percent = ($maxSales > 0) ? ($org['total_sales'] / $maxSales) * 100 : 0;
+                    if (!empty($topCategories)) {
+                        foreach ($topCategories as $index => $category) {
                     ?>
-                            <div class="org-row">
-                                <div class="org-info">
-                                    <span class="org-name"><?= htmlspecialchars($org['organization_name']) ?></span>
-                                    <span class="org-sales">₱<?= number_format($org['total_sales'], 2) ?></span>
-                                </div>
-                                <div class="org-bar">
-                                    <div class="org-bar-fill" style="--target-width: <?= $percent ?>%;"></div>
+                            <div class="category-row" style="animation-delay: <?php echo $index * 0.1; ?>s;">
+                                <div class="category-info">
+                                    <span class="category-name"><?= htmlspecialchars($category['category_name']) ?></span>
+                                    <span class="category-sold"><?= $category['total_sold'] ?> pcs sold</span>
                                 </div>
                             </div>
                         <?php
-                            $delay += 0.1; // each bar animates 0.1s after the previous
                         }
                         ?>
                     <?php
                     } else {
-                        echo "<p class='no-data'>No sales data available this month.</p>";
+                        echo "<p class='no-data'>No category data available this month.</p>";
                     }
                     ?>
                 </div>
@@ -1319,8 +1428,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         </div>
 
-        <div class="gcash-section">
+        <div class="gcash-section" id="gcashSection">
             <h2><i class="fas fa-qrcode"></i> GCash Payment QR Code</h2>
+
+            <?php 
+            $hasGcashInfo = !empty($gcash_number) || (!empty($gcash_qr) && file_exists($gcash_qr));
+            if (!$hasGcashInfo):
+            ?>
+                <div class="alert alert-error" style="margin-bottom: 20px;">
+                    <strong><i class="fas fa-exclamation-triangle"></i> GCash Payment Not Available</strong>
+                    <p style="margin-top: 8px;">Please add a GCash number or upload a QR code to enable GCash payment option for your customers.</p>
+                </div>
+            <?php endif; ?>
 
             <?php if (isset($success_message)): ?>
                 <div class="alert alert-success"><?php echo $success_message; ?></div>
@@ -1332,19 +1451,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="gcash-content">
                 <div class="gcash-upload-form">
-                    <form method="POST" enctype="multipart/form-data">
+                    <form method="POST" enctype="multipart/form-data" id="gcashForm">
                         <div style="margin-bottom: 20px;">
                             <label for="gcash_number" style="display: block; margin-bottom: 8px;">GCash Number:</label>
-                            <input type="text" name="gcash_number" id="gcash_number" value="<?php echo htmlspecialchars($gcash_number ?? ''); ?>" 
+                            <input type="tel" inputmode="numeric" name="gcash_number" id="gcash_number" value="<?php echo htmlspecialchars($gcash_number ?? ''); ?>" 
                                 style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" 
-                                placeholder="Enter GCash number" maxlength="11">
+                                placeholder="Enter 11-digit GCash number" maxlength="11">
+                            <small style="color: #666; font-size: 12px;">Must be exactly 11 digits</small>
                         </div>
                         
                         <label for="gcash_qr">Upload GCash QR Code:</label>
                         <input type="file" name="gcash_qr" id="gcash_qr" accept="image/jpeg,image/jpg,image/png">
-                        <button type="submit">
+                        <button type="submit" id="gcashSubmitBtn">
                             <i class="fas fa-upload"></i> Save Changes
                         </button>
+                        <p style="color: #999; font-size: 13px; margin-top: 5px;">Enter a GCash number or upload a QR code (or both)</p>
                     </form>
                     <p style="color: #666; font-size: 14px; margin-top: 10px;">
                         <i class="fas fa-info-circle"></i> Accepted formats: JPG, JPEG, PNG
@@ -1380,6 +1501,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 card.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
             });
         });
+
+        // GCash form validation - enable button if either field has value
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('gcashForm');
+            const numberInput = document.getElementById('gcash_number');
+            const fileInput = document.getElementById('gcash_qr');
+            const submitBtn = document.getElementById('gcashSubmitBtn');
+            
+            // Only allow numbers in GCash number field (max 11 digits)
+            if (numberInput) {
+                numberInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);
+                    validateForm();
+                });
+            }
+            
+            function validateForm() {
+                // GCash number must be empty or exactly 11 digits
+                const numberValue = numberInput ? numberInput.value.trim() : '';
+                const hasValidNumber = numberValue.length === 11 || numberValue.length === 0;
+                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                
+                // Enable button only if: (valid number OR empty) AND (has file OR has complete number)
+                const canSubmit = hasValidNumber && (hasFile || numberValue.length === 11);
+                submitBtn.disabled = !canSubmit;
+            }
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', validateForm);
+            }
+            
+            // Prevent form submission if validation fails
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const numberValue = numberInput ? numberInput.value.trim() : '';
+                    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                    
+                    // Check if number is provided but not 11 digits
+                    if (numberValue.length > 0 && numberValue.length !== 11) {
+                        e.preventDefault();
+                        alert('GCash number must be exactly 11 digits.');
+                        return false;
+                    }
+                    
+                    // Check if both are empty
+                    if (numberValue.length === 0 && !hasFile) {
+                        e.preventDefault();
+                        alert('Please enter a valid 11-digit GCash number or upload a QR code.');
+                        return false;
+                    }
+                });
+            }
+            
+            // Initial validation
+            validateForm();
+        });
     </script>
 
     <script>
@@ -1404,51 +1581,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 
     <script>
-        document.getElementById('monthFilter').addEventListener('change', function() {
-            const value = this.value;
-            fetch(`top_org_sales.php?filter=${value}`)
-                .then(res => res.text())
-                .then(html => {
-                    document.getElementById('topOrgSalesContainer').innerHTML = html;
-                });
-        });
-    </script>
-
-    <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const container = document.getElementById("topOrgSalesContainer");
-            const filter = document.getElementById("monthFilter");
+            const container = document.getElementById("topCategoriesContainer");
+            const filterButtons = document.querySelectorAll(".filter-btn");
 
-            // Function to load data dynamically
-            function loadTopSales(filterValue) {
-                fetch(`top_org_sales.php?filter=${filterValue}`)
+            // Function to load categories dynamically
+            function loadTopCategories(period) {
+                fetch(`top_selling_categories.php?period=${period}`)
                     .then(res => res.text())
                     .then(html => {
                         container.innerHTML = html;
 
                         // re-apply animation when new data loads
-                        const bars = container.querySelectorAll(".org-bar-fill");
-                        const observer = new IntersectionObserver(entries => {
-                            entries.forEach(entry => {
-                                if (entry.isIntersecting) {
-                                    entry.target.classList.add("visible");
-                                    observer.unobserve(entry.target);
-                                }
-                            });
-                        }, {
-                            threshold: 0.3
+                        const rows = container.querySelectorAll(".category-row");
+                        rows.forEach((row, index) => {
+                            row.style.animationDelay = (index * 0.1) + 's';
                         });
-                        bars.forEach(bar => observer.observe(bar));
-                    });
+                    })
+                    .catch(err => console.error('Error loading categories:', err));
             }
 
-            // Initial load
-            loadTopSales(filter.value);
-
-            // Change event for filter
-            filter.addEventListener("change", () => {
-                loadTopSales(filter.value);
+            // Filter button click handlers
+            filterButtons.forEach(btn => {
+                btn.addEventListener("click", function() {
+                    filterButtons.forEach(b => b.classList.remove("active"));
+                    this.classList.add("active");
+                    const period = this.getAttribute("data-period");
+                    loadTopCategories(period);
+                });
             });
+
+            // Initial load with "month" filter
+            loadTopCategories("month");
         });
     </script>
 
@@ -1704,6 +1868,275 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 notificationSystem.destroy();
             }
         });
+
+        // Export to PDF Function
+        const { jsPDF } = window.jspdf;
+
+        async function exportToPDF() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.classList.add('active');
+
+            try {
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                let yPosition = 20;
+
+                // Header
+                pdf.setFillColor(102, 126, 234);
+                pdf.rect(0, 0, pageWidth, 35, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(24);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Seller Dashboard Report', pageWidth / 2, 15, { align: 'center' });
+                pdf.setFontSize(12);
+                pdf.setFont(undefined, 'normal');
+                pdf.text(`Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 25, { align: 'center' });
+
+                yPosition = 45;
+
+                // Metrics Section
+                pdf.setTextColor(26, 32, 44);
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Key Metrics', 15, yPosition);
+                yPosition += 10;
+
+                const metrics = [
+                    { label: 'Total Revenue', value: '₱<?= number_format($totalRevenue, 2) ?>', color: [4, 120, 87] },
+                    { label: 'Average Order', value: '₱<?= number_format($averageOrderValue, 2) ?>', color: [217, 119, 6] },
+                    { label: 'Total Products', value: '<?= intval($totalProducts) ?>', color: [30, 64, 175] },
+                    { label: 'Pre-orders', value: '<?= intval($totalPreOrders) ?>', color: [190, 24, 93] }
+                ];
+
+                const metricWidth = (pageWidth - 40) / 2;
+                const metricHeight = 20;
+                let xPos = 15;
+                let row = 0;
+
+                metrics.forEach((metric, index) => {
+                    if (index % 2 === 0 && index > 0) {
+                        row++;
+                        xPos = 15;
+                        yPosition += metricHeight + 5;
+                    } else if (index > 0) {
+                        xPos = 15 + metricWidth + 10;
+                    }
+
+                    // Metric box
+                    pdf.setFillColor(248, 249, 250);
+                    pdf.roundedRect(xPos, yPosition, metricWidth, metricHeight, 2, 2, 'F');
+                    
+                    pdf.setTextColor(113, 128, 150);
+                    pdf.setFontSize(9);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text(metric.label.toUpperCase(), xPos + 5, yPosition + 7);
+                    
+                    pdf.setTextColor(26, 32, 44);
+                    pdf.setFontSize(14);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text(metric.value, xPos + 5, yPosition + 15);
+                });
+
+                yPosition += metricHeight + 15;
+
+                // Revenue Chart
+                if (yPosition > pageHeight - 100) {
+                    pdf.addPage();
+                    yPosition = 20;
+                }
+
+                pdf.setTextColor(26, 32, 44);
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Revenue Report', 15, yPosition);
+                yPosition += 10;
+
+                const canvas = document.getElementById('revenueChart');
+                if (canvas) {
+                    const chartImage = canvas.toDataURL('image/png');
+                    const imgWidth = pageWidth - 30;
+                    const imgHeight = 80;
+                    pdf.addImage(chartImage, 'PNG', 15, yPosition, imgWidth, imgHeight);
+                    yPosition += imgHeight + 10;
+                }
+
+                // Revenue Stats
+                pdf.setFillColor(248, 249, 250);
+                pdf.roundedRect(15, yPosition, pageWidth - 30, 25, 2, 2, 'F');
+                
+                const statsX = [25, (pageWidth / 2) - 25, pageWidth - 65];
+                const statsLabels = ['Total Revenue', 'Monthly Growth', 'Average Order'];
+                const statsValues = [
+                    '₱<?= number_format($totalRevenue, 2) ?>',
+                    '<?= ($growthRate >= 0 ? '+' : '') . $growthRate ?>%',
+                    '₱<?= number_format($averageOrderValue, 2) ?>'
+                ];
+
+                statsLabels.forEach((label, index) => {
+                    pdf.setTextColor(113, 128, 150);
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text(label.toUpperCase(), statsX[index], yPosition + 8);
+                    
+                    pdf.setTextColor(26, 32, 44);
+                    pdf.setFontSize(12);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text(statsValues[index], statsX[index], yPosition + 17);
+                });
+
+                yPosition += 35;
+
+                // Top Selling Categories Section
+                if (yPosition > pageHeight - 80) {
+                    pdf.addPage();
+                    yPosition = 20;
+                }
+
+                pdf.setTextColor(26, 32, 44);
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Top Selling Categories', 15, yPosition);
+                yPosition += 10;
+
+                // Get current active filter period - map period to filter parameter
+                const activePeriodBtn = document.querySelector('.filter-btn.active');
+                const currentPeriod = activePeriodBtn ? activePeriodBtn.getAttribute('data-period') : 'month';
+                
+                // Map period names to filter names if needed
+                let filterParam = currentPeriod;
+                if (currentPeriod === '7days') filterParam = '7days';
+                else if (currentPeriod === 'month') filterParam = 'month';
+                else if (currentPeriod === '30days') filterParam = '30days';
+
+                // Fetch categories data for current period
+                try {
+                    const categoryResponse = await fetch(`top_selling_categories.php?filter=${filterParam}`);
+                    const categoryHtml = await categoryResponse.text();
+                    
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = categoryHtml;
+                    const categoryRows = tempDiv.querySelectorAll('.category-row');
+                    const categories = [];
+                    
+                    categoryRows.forEach((row) => {
+                        const nameEl = row.querySelector('.category-name');
+                        const soldEls = row.querySelectorAll('[style*="12px"]');
+                        
+                        if (nameEl) {
+                            // Try to extract sold amount from the text content
+                            const rowText = row.textContent;
+                            const soldMatch = rowText.match(/(\d+(?:,\d+)*)\s+(?:units\s+)?sold/);
+                            const sold = soldMatch ? soldMatch[1] : 'N/A';
+                            
+                            categories.push({
+                                name: nameEl.textContent.trim(),
+                                sold: sold + ' units sold'
+                            });
+                        }
+                    });
+
+                    if (categories.length > 0) {
+                        categories.forEach((category, index) => {
+                            if (yPosition > pageHeight - 30) {
+                                pdf.addPage();
+                                yPosition = 20;
+                            }
+
+                            pdf.setFillColor(248, 249, 250);
+                            pdf.roundedRect(15, yPosition, pageWidth - 30, 15, 2, 2, 'F');
+
+                            // Rank badge
+                            if (index <= 2) {
+                                const colors = [[251, 191, 36], [148, 163, 184], [251, 146, 60]];
+                                pdf.setFillColor(...colors[index]);
+                            } else {
+                                pdf.setFillColor(102, 126, 234);
+                            }
+                            pdf.roundedRect(20, yPosition + 3, 8, 8, 1, 1, 'F');
+                            pdf.setTextColor(255, 255, 255);
+                            pdf.setFontSize(10);
+                            pdf.setFont(undefined, 'bold');
+                            pdf.text((index + 1).toString(), 24, yPosition + 8.5, { align: 'center' });
+
+                            // Category name
+                            pdf.setTextColor(26, 32, 44);
+                            pdf.setFontSize(11);
+                            pdf.setFont(undefined, 'bold');
+                            pdf.text(category.name.substring(0, 35), 33, yPosition + 7);
+
+                            // Quantity sold
+                            pdf.setTextColor(102, 126, 234);
+                            pdf.setFontSize(11);
+                            pdf.setFont(undefined, 'bold');
+                            pdf.text(category.sold, pageWidth - 20, yPosition + 9, { align: 'right' });
+
+                            yPosition += 20;
+                        });
+                    } else {
+                        pdf.setTextColor(160, 174, 192);
+                        pdf.setFontSize(10);
+                        pdf.text('No category data available', pageWidth / 2, yPosition + 20, { align: 'center' });
+                        yPosition += 30;
+                    }
+                } catch (error) {
+                    console.error('Error fetching categories for PDF:', error);
+                    pdf.setTextColor(160, 174, 192);
+                    pdf.setFontSize(10);
+                    pdf.text('Error loading category data', pageWidth / 2, yPosition + 20, { align: 'center' });
+                    yPosition += 30;
+                }
+
+                yPosition += 20;
+
+                // Add new page before Top Products
+                pdf.addPage();
+                yPosition = 20;
+
+                pdf.setTextColor(26, 32, 44);
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Top Products (This Month)', 15, yPosition);
+                yPosition += 10;
+
+                const topProducts = [
+                    { label: 'Product 1', value: 'Top performing product', color: [40, 167, 69] },
+                    { label: 'Product 2', value: 'High demand product', color: [0, 123, 255] },
+                    { label: 'Product 3', value: 'Popular item', color: [255, 193, 7] }
+                ];
+
+                topProducts.forEach((product, index) => {
+                    if (yPosition > pageHeight - 30) {
+                        pdf.addPage();
+                        yPosition = 20;
+                    }
+
+                    pdf.setFillColor(248, 249, 250);
+                    pdf.roundedRect(15, yPosition, pageWidth - 30, 15, 2, 2, 'F');
+
+                    pdf.setTextColor(26, 32, 44);
+                    pdf.setFontSize(11);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text((index + 1) + '. ' + product.label, 20, yPosition + 7);
+
+                    pdf.setTextColor(113, 128, 150);
+                    pdf.setFontSize(9);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.text(product.value, 20, yPosition + 12);
+
+                    yPosition += 20;
+                });
+
+                // Save the PDF
+                pdf.save(`Seller_Dashboard_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                alert('Error generating PDF. Please try again.');
+            } finally {
+                loadingOverlay.classList.remove('active');
+            }
+        }
     </script>
 
 </body>

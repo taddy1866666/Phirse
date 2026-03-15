@@ -29,7 +29,15 @@ try {
     }
 
     $organization_name = $seller['organization'];
-    $seller_logo = !empty($seller['logo_path']) ? '../uploads/logos/' . $seller['logo_path'] : null;
+    // Check if logo path already contains the uploads directory
+    $logo_path = $seller['logo_path'] ?? '';
+    if (!empty($logo_path) && strpos($logo_path, 'uploads') === false) {
+        // If path doesn't contain 'uploads', prepend the path
+        $seller_logo = '../uploads/logos/' . $logo_path;
+    } else {
+        // Otherwise use as-is from database
+        $seller_logo = !empty($logo_path) ? $logo_path : null;
+    }
     
 } catch (PDOException $e) {
     error_log("Error: " . $e->getMessage());

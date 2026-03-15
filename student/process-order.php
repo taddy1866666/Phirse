@@ -277,9 +277,11 @@ $stmt->bind_param(
     $stmt->close();
 
     // Create notification for seller
+    // Create notification for seller with detailed student info
+    $student_number = $_SESSION['student_number'] ?? 'N/A';
     $student_name = $_SESSION['student_name'] ?? 'A student';
     $notif_title = "New Order Received";
-    $notif_message = "{$student_name} ordered {$quantity} x {$product['name']} - Total: ₱" . number_format($total_price, 2);
+    $notif_message = "New Order from {$student_name} ({$student_number})\nProduct: {$product['name']}\nQuantity: {$quantity}\nTotal: ₱" . number_format($total_price, 2);
     $notif_type = "order";
 
     $notifSql = "INSERT INTO seller_notifications (seller_id, product_id, order_id, type, title, message, created_at)
