@@ -6,9 +6,6 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include __DIR__ . '/db/config.php';
 
-$pageTitle = 'Process Order';
-include 'includes/header.php';
-
 // Check if user is logged in
 if (!isset($_SESSION['student_id'])) {
     $_SESSION['flash_message'] = "Please login to place an order.";

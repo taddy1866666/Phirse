@@ -2,11 +2,8 @@
 session_start();
 require_once 'db/config.php';
 
-$pageTitle = 'Logging Out';
-include 'includes/header.php';
-
 // Log activity before logout
-if (isLoggedIn()) {
+if (isset($_SESSION['student_id'])) {
     logActivity('logout', 'Student logged out');
 }
 
