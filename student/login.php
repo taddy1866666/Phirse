@@ -2,14 +2,6 @@
 session_start();
 require_once 'db/config.php';
 
-$pageTitle = 'Login';
-include 'includes/header.php';
-
-// Redirect if already logged in
-if (isLoggedIn()) {
-    redirectWithMessage('index.php', 'You are already logged in!', 'info');
-}
-
 $error = '';
 $success = '';
 
