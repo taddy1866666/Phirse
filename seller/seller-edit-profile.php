@@ -50,7 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
 
 // Get current seller info
 try {
-    $stmt = $pdo->prepare("SELECT seller_name, organization, contact_number, logo_path, adviser FROM sellers WHERE id = ?");
+    // Use IFNULL to make adviser column optional (in case it doesn't exist yet)
+    $stmt = $pdo->prepare("SELECT seller_name, organization, contact_number, logo_path, IFNULL(adviser, '') as adviser FROM sellers WHERE id = ?");
     $stmt->execute([$seller_id]);
     $seller_info = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -59,7 +60,19 @@ try {
     $organization_name = $seller_info['organization'] ?? $_SESSION['organization'] ?? '';
     $seller_name = $seller_info['seller_name'] ?? $_SESSION['seller_name'] ?? '';
 } catch(PDOException $e) {
-    $error_message = "Error fetching seller info: " . $e->getMessage();
+    // If adviser column doesn't exist, try without it
+    try {
+        $stmt = $pdo->prepare("SELECT seller_name, organization, contact_number, logo_path FROM sellers WHERE id = ?");
+        $stmt->execute([$seller_id]);
+        $seller_info = $stmt->fetch(PDO::FETCH_ASSOC);
+        $seller_info['adviser'] = ''; // Add empty adviser
+        
+        $seller_logo = !empty($seller_info['logo_path']) ? $seller_info['logo_path'] : null;
+        $organization_name = $seller_info['organization'] ?? $_SESSION['organization'] ?? '';
+        $seller_name = $seller_info['seller_name'] ?? $_SESSION['seller_name'] ?? '';
+    } catch(PDOException $e2) {
+        $error_message = "Error fetching seller info: " . $e2->getMessage();
+    }
 }
 
 // Handle form submission (only for profile updates, not password changes)
@@ -109,8 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['change_password'])) 
             }
             
             if (empty($error_message)) {
-                $stmt = $pdo->prepare("UPDATE sellers SET seller_name = ?, organization = ?, contact_number = ?, logo_path = ?, adviser = ? WHERE id = ?");
-                $stmt->execute([$seller_name, $organization, $contact_number, $logo_path, $adviser, $seller_id]);
+                // Try updating with adviser column, fall back if it doesn't exist
+                try {
+                    $stmt = $pdo->prepare("UPDATE sellers SET seller_name = ?, organization = ?, contact_number = ?, logo_path = ?, adviser = ? WHERE id = ?");
+                    $stmt->execute([$seller_name, $organization, $contact_number, $logo_path, $adviser, $seller_id]);
+                } catch(PDOException $e) {
+                    // If adviser column doesn't exist, update without it
+                    $stmt = $pdo->prepare("UPDATE sellers SET seller_name = ?, organization = ?, contact_number = ?, logo_path = ? WHERE id = ?");
+                    $stmt->execute([$seller_name, $organization, $contact_number, $logo_path, $seller_id]);
+                }
                 
                 // Update session
                 $_SESSION['seller_name'] = $seller_name;
