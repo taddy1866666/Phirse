@@ -12,8 +12,9 @@ COPY . .
 # Create uploads directories
 RUN mkdir -p uploads/products uploads/payment_proofs uploads/logos uploads/pdfs
 
-# Expose port (will be overridden by Railway)
-EXPOSE 8000
+# Create entrypoint script
+RUN echo '#!/bin/sh\nphp -S 0.0.0.0:${PORT:-8000}' > /entrypoint.sh && chmod +x /entrypoint.sh
 
-# Start PHP built-in server
-CMD ["php", "-S", "0.0.0.0:${PORT:-8000}"]
+# Start PHP server
+ENTRYPOINT ["/bin/sh"]
+CMD ["/entrypoint.sh"]
