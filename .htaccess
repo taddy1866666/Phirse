@@ -1,0 +1,4 @@
+RewriteEngine On
+
+# Default to index.html
+DirectoryIndex index.html index.php

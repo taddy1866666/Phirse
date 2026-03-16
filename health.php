@@ -19,3 +19,5 @@ try {
     echo "Service unavailable";
 }
 ?>
+echo 'OK';
+>>>>>>> 118c239c918feee2e14834c8337d4826b84c70ee
