@@ -223,34 +223,38 @@ try {
     // Generate unique reference number
     $reference_number = generateReferenceNumber();
 
-    // Determine order status based on payment method
-    $order_status = ($payment_method === 'gcash' && $db_path) ? 'paid' : 'pending';
+    // For cash on hand, status is 'pending'. For GCash with payment proof, it's 'paid'
+    $order_status = ($payment_method === 'gcash' && !empty($db_path)) ? 'paid' : 'pending';
 
-    // Insert order with payment method and reference number
-  $insertOrderSql = "INSERT INTO orders (reference_number, user_id, seller_id, product_id, student_id, quantity, total_price, status, payment_method, payment_proof_path, product_size, order_date)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    // Insert order - using simpler approach for compatibility
+    $insertOrderSql = "INSERT INTO orders 
+                       (reference_number, user_id, seller_id, product_id, student_id, quantity, total_price, status, payment_method, payment_proof_path, product_size, order_date)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
-$stmt = $conn->prepare($insertOrderSql);
-if (!$stmt) {
-    throw new Exception("Failed to prepare order statement: " . $conn->error);
-}
+    $stmt = $conn->prepare($insertOrderSql);
+    if (!$stmt) {
+        throw new Exception("Failed to prepare order statement: " . $conn->error);
+    }
 
-$stmt->bind_param(
-    'siiiiidssss',
-    $reference_number,  // s
-    $user_id,           // i
-    $seller_id,         // i
-    $product_id,        // i
-    $student_id,        // i
-    $quantity,          // i
-    $total_price,       // d
-    $order_status,      // s
-    $payment_method,    // s
-    $db_path,          // s
-    $product_size       // s
-);
-
-
+    // Bind parameters more carefully
+    $bind_types = 'siiiiidssss';
+    $bind_vars = [
+        $reference_number,  // s
+        $user_id,           // i
+        $seller_id,         // i  
+        $product_id,        // i
+        $student_id,        // i
+        $quantity,          // i
+        $total_price,       // d
+        $order_status,      // s
+        $payment_method,    // s
+        $db_path,          // s (can be null for cash)
+        $product_size       // s (can be null)
+    ];
+    
+    if (!$stmt->bind_param($bind_types, ...$bind_vars)) {
+        throw new Exception("Failed to bind parameters: " . $stmt->error);
+    }
 
     if (!$stmt->execute()) {
         throw new Exception("Failed to create order: " . $stmt->error);
@@ -274,7 +278,6 @@ $stmt->bind_param(
     $stmt->close();
 
     // Create notification for seller
-    // Create notification for seller with detailed student info
     $student_number = $_SESSION['student_number'] ?? 'N/A';
     $student_name = $_SESSION['student_name'] ?? 'A student';
     $notif_title = "New Order Received";
@@ -327,9 +330,13 @@ $stmt->bind_param(
         unlink($upload_path);
     }
 
-    error_log("Order processing error: " . $e->getMessage());
+    $error_msg = $e->getMessage();
+    error_log("Order processing error: " . $error_msg);
     
-    $_SESSION['flash_message'] = "Failed to place order. Please try again.";
+    // Log to file for debugging
+    file_put_contents(__DIR__ . '/order_errors.log', date('Y-m-d H:i:s') . " - " . $error_msg . "\n", FILE_APPEND);
+    
+    $_SESSION['flash_message'] = "Failed to place order: " . $error_msg;
     $_SESSION['flash_type'] = "error";
     header("Location: product-details.php?id=$product_id");
     exit();
