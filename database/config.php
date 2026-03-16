@@ -1,6 +1,6 @@
 <?php
 $host     = getenv('MYSQLHOST')     ?: 'localhost';
-$dbname   = getenv('MYSQLDATABASE') ?: 'phirse_db';
+$dbname   = getenv('MYSQL_DATABASE') ?: 'railway';
 $username = getenv('MYSQLUSER')     ?: 'root';
 $password = getenv('MYSQLPASSWORD') ?: '';
 $port     = getenv('MYSQLPORT')     ?: '3306';
