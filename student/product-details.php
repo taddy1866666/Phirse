@@ -1615,7 +1615,7 @@ displayFlashMessage();
                     </label>
 
                     <label class="payment-method-option <?= $has_gcash_qr ? '' : 'selected' ?>" id="cashOption">
-                        <input type="radio" name="payment_method" value="cash" <?= $has_gcash_qr ? '' : 'checked' ?> onchange="selectPaymentMethod('cash')">
+                        <input type="radio" name="payment_method" value="onhand" <?= $has_gcash_qr ? '' : 'checked' ?> onchange="selectPaymentMethod('onhand')">
                         <i class="fas fa-money-bill-wave"></i>
                         <div class="method-name">Cash on Hand</div>
                         <div class="method-description">Pay with cash</div>
@@ -1685,7 +1685,7 @@ displayFlashMessage();
                 <input type="hidden" name="seller_id" value="<?= $product['seller_id'] ?>">
                 <input type="hidden" name="quantity" id="formQuantity" value="1">
                 <input type="hidden" name="total_price" id="formTotalPrice" value="<?= $product['price'] ?>">
-                <input type="hidden" name="payment_method" id="formPaymentMethod" value="gcash">
+                <input type="hidden" name="payment_method" id="formPaymentMethod" value="onhand">
                 <?php if ($product['category'] === 'Organization Shirt' || $product['category'] === 'Merchandise'): ?>
                 <input type="hidden" name="product_size" id="formProductSize" value="">
                 <?php endif; ?>
@@ -2070,8 +2070,8 @@ displayFlashMessage();
 
             if (method === 'gcash' && gcashDisabled) {
                 alert('GCash payment is not available for this seller. Please choose Cash on Hand.');
-                // fallback to cash
-                method = 'cash';
+                // fallback to onhand
+                method = 'onhand';
             }
 
             if (method === 'gcash') {

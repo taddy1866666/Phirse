@@ -26,7 +26,7 @@ $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
 $seller_id = isset($_POST['seller_id']) ? intval($_POST['seller_id']) : 0;
 $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
 $total_price = isset($_POST['total_price']) ? floatval($_POST['total_price']) : 0;
-$payment_method = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'gcash';
+$payment_method = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'onhand';
 $product_size = isset($_POST['product_size']) ? $_POST['product_size'] : null;
 
 // Get product info to validate size requirement (category + description/name)
@@ -83,7 +83,7 @@ if ($requires_size && empty($product_size)) {
 }
 
 // Validate payment method
-if (!in_array($payment_method, ['gcash', 'cash'])) {
+if (!in_array($payment_method, ['gcash', 'onhand'])) {
     $_SESSION['flash_message'] = "Invalid payment method.";
     $_SESSION['flash_type'] = "error";
     header("Location: product-details.php?id=$product_id");
