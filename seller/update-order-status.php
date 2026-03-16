@@ -87,11 +87,12 @@ try {
         }
 
         // Insert into notifications table
+        $notif_title = ucfirst($status) . " Order";
         $stmt = $pdo->prepare("
-            INSERT INTO notifications (student_id, message, created_at, is_read)
-            VALUES (?, ?, NOW(), 0)
+            INSERT INTO notifications (student_id, order_id, type, title, message, created_at, is_read)
+            VALUES (?, ?, ?, ?, ?, NOW(), 0)
         ");
-        $stmt->execute([$student_id, $message]);
+        $stmt->execute([$student_id, $order_id, $status, $notif_title, $message]);
     }
 
     // Commit transaction
