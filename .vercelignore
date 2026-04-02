@@ -1,0 +1,14 @@
+.git
+.claude
+node_modules
+*.log
+.env
+railway.json
+railway.toml
+nixpacks.toml
+Procfile
+AGENTS.md
+SYSTEM_OBJECTIVES.md
+SYSTEM_OBJECTIVES.txt
+USER_MANUAL.md
+USER_MANUAL.txt

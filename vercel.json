@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "**/*.php",
+      "use": "vercel-php@0.7.2"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(css|js|images)/(.*)",
+      "dest": "/$1/$2"
+    },
+    {
+      "src": "/student/(.*)",
+      "dest": "/student/$1"
+    },
+    {
+      "src": "/seller/(.*)",
+      "dest": "/seller/$1"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/admin/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/student/index.php"
+    }
+  ],
+  "env": {
+    "MYSQLHOST": "@mysql_host",
+    "MYSQL_DATABASE": "@mysql_database",
+    "MYSQLUSER": "@mysql_user",
+    "MYSQLPASSWORD": "@mysql_password",
+    "MYSQLPORT": "@mysql_port"
+  }
+}
