@@ -27,12 +27,5 @@
       "src": "/(.*)",
       "dest": "/student/index.php"
     }
-  ],
-  "env": {
-    "MYSQLHOST": "@mysql_host",
-    "MYSQL_DATABASE": "@mysql_database",
-    "MYSQLUSER": "@mysql_user",
-    "MYSQLPASSWORD": "@mysql_password",
-    "MYSQLPORT": "@mysql_port"
-  }
+  ]
 }
